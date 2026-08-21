@@ -1,0 +1,11 @@
+node_modules/
+.env
+dist/
+.specify/
+e2e/test-results/
+e2e/playwright-report/
+
+# Claude Code local settings/credentials (per spec-kit security guidance)
+.claude/settings.local.json
+.mcp
+

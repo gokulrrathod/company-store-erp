@@ -1,0 +1,13 @@
+{
+  "name": "store-poc-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:demo": "playwright test tests/full-demo.spec.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.0"
+  }
+}
