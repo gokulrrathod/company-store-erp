@@ -65,6 +65,7 @@ export default function DataTable({
       sx={{
         height,
         minHeight: fillHeight ? 0 : undefined,
+        overflow: fillHeight ? 'hidden' : undefined,
         width: '100%',
         '--ag-active-color': '#4F46E5',
         '--ag-selected-row-background-color': '#EEF2FF',

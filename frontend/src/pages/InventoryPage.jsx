@@ -34,18 +34,18 @@ export default function InventoryPage() {
   ];
 
   return (
-    <Box sx={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      <Typography variant="h5" gutterBottom>Inventory</Typography>
+    <Box sx={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <Typography variant="h5" gutterBottom sx={{ flexShrink: 0 }}>Inventory</Typography>
       <TextField
         label="Search"
         placeholder="Search by name or code"
         size="small"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        sx={{ mb: 2, width: 320 }}
+        sx={{ mb: 2, width: 320, flexShrink: 0 }}
         InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
       />
-      <Box sx={{ flex: 1, minHeight: 0 }}>
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
         <DataTable
           rowData={items}
           columnDefs={columnDefs}
