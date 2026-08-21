@@ -15,10 +15,6 @@ const DEFAULT_COL_DEF = {
   minWidth: 110,
 };
 
-// Columns size to fit their own content/header — never compressed to force
-// everything into the visible width (fitGridWidth does that and truncates
-// text with ellipsis instead). If total column width exceeds the grid's
-// width, the grid gets its own horizontal scrollbar instead of the page.
 const AUTO_SIZE_STRATEGY = { type: 'fitCellContents' };
 
 const ROW_HEIGHT = 34;
@@ -32,6 +28,7 @@ export default function DataTable({
   pageSize = 50,
   minHeight = 320,
   maxHeight = 640,
+  fillHeight = false,
   emptyMessage = 'No records found.',
   onRowClicked,
   getRowId,
@@ -58,18 +55,16 @@ export default function DataTable({
     );
   }
 
-  // Grid shrinks to fit small datasets (never below minHeight) and grows
-  // with more rows, but is capped at maxHeight — beyond that, the grid gets
-  // its own internal scrollbar instead of pushing the whole page to scroll.
   const visibleRows = pagination ? Math.min(rowData.length, pageSize) : rowData.length;
   const contentHeight = HEADER_HEIGHT + visibleRows * ROW_HEIGHT + (pagination ? PAGER_HEIGHT : 0) + 4;
-  const height = Math.min(maxHeight, Math.max(minHeight, contentHeight));
+  const height = fillHeight ? '100%' : Math.min(maxHeight, Math.max(minHeight, contentHeight));
 
   return (
     <Box
       className="ag-theme-quartz"
       sx={{
         height,
+        minHeight: fillHeight ? 0 : undefined,
         width: '100%',
         '--ag-active-color': '#4F46E5',
         '--ag-selected-row-background-color': '#EEF2FF',

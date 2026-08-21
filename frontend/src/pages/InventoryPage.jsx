@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Typography, TextField, InputAdornment, Chip } from '@mui/material';
+import { Box, Typography, TextField, InputAdornment, Chip } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import DataTable from '../components/DataTable.jsx';
 import { api } from '../api/client.js';
@@ -34,7 +34,7 @@ export default function InventoryPage() {
   ];
 
   return (
-    <>
+    <Box sx={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <Typography variant="h5" gutterBottom>Inventory</Typography>
       <TextField
         label="Search"
@@ -45,13 +45,16 @@ export default function InventoryPage() {
         sx={{ mb: 2, width: 320 }}
         InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
       />
-      <DataTable
-        rowData={items}
-        columnDefs={columnDefs}
-        quickFilterText={search}
-        getRowId={(p) => String(p.data.id)}
-        emptyMessage="No items found. Start the backend and load seed data."
-      />
-    </>
+      <Box sx={{ flex: 1, minHeight: 0 }}>
+        <DataTable
+          rowData={items}
+          columnDefs={columnDefs}
+          quickFilterText={search}
+          getRowId={(p) => String(p.data.id)}
+          emptyMessage="No items found. Start the backend and load seed data."
+          fillHeight
+        />
+      </Box>
+    </Box>
   );
 }
