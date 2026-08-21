@@ -10,9 +10,12 @@ const router = Router();
 router.use(requireAuth);
 
 async function nextPoNumber(client) {
-  const { rows } = await client.query(`SELECT po_number FROM purchase_orders ORDER BY id DESC LIMIT 1`);
-  const lastSeq = rows.length ? Number(rows[0].po_number.split('-').pop()) : 0;
   const year = new Date().getFullYear();
+  const { rows } = await client.query(
+    `SELECT po_number FROM purchase_orders WHERE po_number LIKE $1 ORDER BY id DESC LIMIT 1`,
+    [`PO-${year}-%`]
+  );
+  const lastSeq = rows.length ? Number(rows[0].po_number.split('-').pop()) : 0;
   return `PO-${year}-${String(lastSeq + 1).padStart(4, '0')}`;
 }
 

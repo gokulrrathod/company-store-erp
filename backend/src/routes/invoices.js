@@ -10,12 +10,12 @@ const router = Router();
 router.use(requireAuth);
 
 async function nextInvoiceNumber(client, invoiceType, prefix) {
+  const year = new Date().getFullYear();
   const { rows } = await client.query(
-    `SELECT invoice_number FROM invoices WHERE invoice_type = $1 ORDER BY id DESC LIMIT 1`,
-    [invoiceType]
+    `SELECT invoice_number FROM invoices WHERE invoice_type = $1 AND invoice_number LIKE $2 ORDER BY id DESC LIMIT 1`,
+    [invoiceType, `${prefix}-${year}-%`]
   );
   const lastSeq = rows.length ? Number(rows[0].invoice_number.split('-').pop()) : 0;
-  const year = new Date().getFullYear();
   return `${prefix}-${year}-${String(lastSeq + 1).padStart(4, '0')}`;
 }
 
