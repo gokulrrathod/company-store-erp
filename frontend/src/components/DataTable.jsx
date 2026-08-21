@@ -15,9 +15,11 @@ const DEFAULT_COL_DEF = {
   minWidth: 110,
 };
 
-// Columns size to fit their own content first, then any leftover grid width
-// is distributed proportionally so there's no dead space on the right.
-const AUTO_SIZE_STRATEGY = { type: 'fitGridWidth', defaultMinWidth: 110 };
+// Columns size to fit their own content/header — never compressed to force
+// everything into the visible width (fitGridWidth does that and truncates
+// text with ellipsis instead). If total column width exceeds the grid's
+// width, the grid gets its own horizontal scrollbar instead of the page.
+const AUTO_SIZE_STRATEGY = { type: 'fitCellContents' };
 
 const ROW_HEIGHT = 34;
 const HEADER_HEIGHT = 36;
