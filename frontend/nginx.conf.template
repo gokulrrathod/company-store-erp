@@ -12,8 +12,11 @@ server {
     resolver ${NGINX_RESOLVER} valid=10s ipv6=on;
 
     location /api/ {
+        # proxy_pass with a variable disables nginx's normal location-prefix
+        # rewriting, so no URI suffix is given here — the original request
+        # URI (already /api/...) is forwarded unchanged.
         set $backend_upstream ${NGINX_BACKEND_HOST};
-        proxy_pass http://$backend_upstream/api/;
+        proxy_pass http://$backend_upstream;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
