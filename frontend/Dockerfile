@@ -12,4 +12,4 @@ COPY nginx.conf.template /etc/nginx/nginx.conf.template
 # to backend.railway.internal:4000 via a service variable.
 ENV NGINX_BACKEND_HOST=backend:4000
 EXPOSE 80
-CMD ["/bin/sh", "-c", "export NGINX_RESOLVER=$(awk '/^nameserver/{print $2; exit}' /etc/resolv.conf) && envsubst '$$NGINX_BACKEND_HOST $$NGINX_RESOLVER' < /etc/nginx/nginx.conf.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]
+CMD ["/bin/sh", "-c", "NGINX_RESOLVER=$(awk '/^nameserver/{print $2; exit}' /etc/resolv.conf); case \"$NGINX_RESOLVER\" in *:*) NGINX_RESOLVER=\"[$NGINX_RESOLVER]\" ;; esac; export NGINX_RESOLVER && envsubst '$$NGINX_BACKEND_HOST $$NGINX_RESOLVER' < /etc/nginx/nginx.conf.template > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"]
