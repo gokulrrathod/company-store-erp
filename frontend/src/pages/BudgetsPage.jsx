@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DataTable from '../components/DataTable.jsx';
+import ListPageLayout from '../components/ListPageLayout.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import { budgetSchema } from '../validation/schemas.js';
 import { applyServerErrors } from '../utils/applyServerErrors.js';
@@ -59,17 +60,19 @@ export default function BudgetsPage() {
   ];
 
   return (
-    <>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h5">Department Budgets</Typography>
-        {canCreate && (
-          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openDialog}>
-            Allocate Budget
-          </Button>
-        )}
-      </Stack>
-
-      <DataTable rowData={budgets} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} pagination={false} />
+    <ListPageLayout
+      header={
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h5">Department Budgets</Typography>
+          {canCreate && (
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openDialog}>
+              Allocate Budget
+            </Button>
+          )}
+        </Stack>
+      }
+    >
+      <DataTable rowData={budgets} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} pagination={false} fillHeight />
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Allocate Department Budget</DialogTitle>
@@ -85,6 +88,6 @@ export default function BudgetsPage() {
           <Button variant="contained" color="primary" onClick={handleSubmit(onSubmit)} disabled={isSubmitting}>Allocate</Button>
         </DialogActions>
       </Dialog>
-    </>
+    </ListPageLayout>
   );
 }

@@ -38,12 +38,11 @@ export default function InventoryPage() {
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 2, flexShrink: 0 }}>
         <Typography variant="h5">Inventory</Typography>
         <TextField
-          label="Search"
           placeholder="Search by name or code"
           size="small"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          sx={{ width: 320 }}
+          sx={{ width: 280 }}
           InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
         />
       </Box>

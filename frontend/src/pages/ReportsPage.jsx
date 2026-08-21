@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Typography, Tabs, Tab, Box } from '@mui/material';
 import DataTable from '../components/DataTable.jsx';
+import ListPageLayout from '../components/ListPageLayout.jsx';
 import { api } from '../api/client.js';
 
 const REPORTS = [
@@ -74,14 +75,19 @@ export default function ReportsPage() {
   }, [active.key]);
 
   return (
-    <>
-      <Typography variant="h5" gutterBottom>Store Reports</Typography>
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-        <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" scrollButtons="auto">
-          {REPORTS.map((r) => <Tab key={r.key} label={r.label} />)}
-        </Tabs>
-      </Box>
-      <DataTable rowData={rows} columnDefs={active.columns} emptyMessage="No data for this report yet." />
-    </>
+    <ListPageLayout
+      header={
+        <>
+          <Typography variant="h5" gutterBottom>Store Reports</Typography>
+          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" scrollButtons="auto">
+              {REPORTS.map((r) => <Tab key={r.key} label={r.label} />)}
+            </Tabs>
+          </Box>
+        </>
+      }
+    >
+      <DataTable rowData={rows} columnDefs={active.columns} emptyMessage="No data for this report yet." fillHeight />
+    </ListPageLayout>
   );
 }

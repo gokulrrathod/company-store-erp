@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, ClientSideRowModelModule } from 'ag-grid-community';
 import { Box, Typography } from '@mui/material';
@@ -35,6 +35,10 @@ export default function DataTable({
   quickFilterText,
 }) {
   const defaultColDef = useMemo(() => DEFAULT_COL_DEF, []);
+  const [displayedRowCount, setDisplayedRowCount] = useState(rowData?.length ?? 0);
+  const onModelUpdated = useCallback((params) => {
+    setDisplayedRowCount(params.api.getDisplayedRowCount());
+  }, []);
 
   if (!rowData || rowData.length === 0) {
     return (
@@ -55,9 +59,11 @@ export default function DataTable({
     );
   }
 
-  const visibleRows = pagination ? Math.min(rowData.length, pageSize) : rowData.length;
+  const visibleRows = pagination ? Math.min(displayedRowCount, pageSize) : displayedRowCount;
   const contentHeight = HEADER_HEIGHT + visibleRows * ROW_HEIGHT + (pagination ? PAGER_HEIGHT : 0) + 4;
-  const height = fillHeight ? '100%' : Math.min(maxHeight, Math.max(minHeight, contentHeight));
+  const height = fillHeight
+    ? `min(${Math.max(minHeight, contentHeight)}px, 100%)`
+    : Math.min(maxHeight, Math.max(minHeight, contentHeight));
 
   return (
     <Box
@@ -89,6 +95,7 @@ export default function DataTable({
         paginationPageSize={pageSize}
         paginationPageSizeSelector={[20, 50, 100, 200]}
         animateRows
+        onModelUpdated={onModelUpdated}
         onRowClicked={onRowClicked}
         getRowId={getRowId}
         quickFilterText={quickFilterText}

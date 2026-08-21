@@ -8,6 +8,7 @@ import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../components/DataTable.jsx';
+import ListPageLayout from '../components/ListPageLayout.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import RHFSelect from '../components/form/RHFSelect.jsx';
 import { projectSchema } from '../validation/schemas.js';
@@ -91,17 +92,19 @@ export default function ProjectsPage() {
   ];
 
   return (
-    <>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h5">Projects</Typography>
-        {canCreate && (
-          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openDialog}>
-            New Project
-          </Button>
-        )}
-      </Stack>
-
-      <DataTable rowData={projects} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} />
+    <ListPageLayout
+      header={
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h5">Projects</Typography>
+          {canCreate && (
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openDialog}>
+              New Project
+            </Button>
+          )}
+        </Stack>
+      }
+    >
+      <DataTable rowData={projects} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} fillHeight />
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>New Project</DialogTitle>
@@ -125,6 +128,6 @@ export default function ProjectsPage() {
           <Button variant="contained" color="primary" onClick={handleSubmit(onSubmit)} disabled={isSubmitting}>Create</Button>
         </DialogActions>
       </Dialog>
-    </>
+    </ListPageLayout>
   );
 }

@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DataTable from '../components/DataTable.jsx';
+import ListPageLayout from '../components/ListPageLayout.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import RHFSelect from '../components/form/RHFSelect.jsx';
 import { vendorSchema } from '../validation/schemas.js';
@@ -109,17 +110,19 @@ export default function VendorsPage() {
   ];
 
   return (
-    <>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h5">Vendor Master</Typography>
-        {canCreate && (
-          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openDialog}>
-            Register Vendor
-          </Button>
-        )}
-      </Stack>
-
-      <DataTable rowData={vendors} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} />
+    <ListPageLayout
+      header={
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h5">Vendor Master</Typography>
+          {canCreate && (
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openDialog}>
+              Register Vendor
+            </Button>
+          )}
+        </Stack>
+      }
+    >
+      <DataTable rowData={vendors} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} fillHeight />
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Register Vendor</DialogTitle>
@@ -142,6 +145,6 @@ export default function VendorsPage() {
           <Button variant="contained" color="primary" onClick={handleSubmit(onSubmit)} disabled={isSubmitting}>Register</Button>
         </DialogActions>
       </Dialog>
-    </>
+    </ListPageLayout>
   );
 }

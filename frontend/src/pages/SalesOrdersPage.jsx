@@ -3,6 +3,7 @@ import { Typography, Chip, IconButton } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../components/DataTable.jsx';
+import ListPageLayout from '../components/ListPageLayout.jsx';
 import { api } from '../api/client.js';
 
 const statusColor = {
@@ -45,9 +46,8 @@ export default function SalesOrdersPage() {
   ];
 
   return (
-    <>
-      <Typography variant="h5" gutterBottom>Sales Orders</Typography>
-      <DataTable rowData={orders} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} />
-    </>
+    <ListPageLayout header={<Typography variant="h5">Sales Orders</Typography>}>
+      <DataTable rowData={orders} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} fillHeight />
+    </ListPageLayout>
   );
 }

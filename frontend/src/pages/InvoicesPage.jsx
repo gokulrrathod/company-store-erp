@@ -8,6 +8,7 @@ import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../components/DataTable.jsx';
+import ListPageLayout from '../components/ListPageLayout.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import RHFSelect from '../components/form/RHFSelect.jsx';
 import { purchaseInvoiceSchema, salesInvoiceSchema } from '../validation/schemas.js';
@@ -116,23 +117,27 @@ export default function InvoicesPage() {
   ];
 
   return (
-    <>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h5">Invoices & Payments</Typography>
-        {canCreate && (
-          <Stack direction="row" spacing={1}>
-            <Button variant="outlined" color="primary" startIcon={<AddIcon />} onClick={openPurchaseDialog}>Purchase Invoice</Button>
-            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openSalesDialog}>Sales Invoice</Button>
+    <ListPageLayout
+      header={
+        <>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+            <Typography variant="h5">Invoices & Payments</Typography>
+            {canCreate && (
+              <Stack direction="row" spacing={1}>
+                <Button variant="outlined" color="primary" startIcon={<AddIcon />} onClick={openPurchaseDialog}>Purchase Invoice</Button>
+                <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openSalesDialog}>Sales Invoice</Button>
+              </Stack>
+            )}
           </Stack>
-        )}
-      </Stack>
 
-      <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ mb: 2 }}>
-        <Tab value="PURCHASE" label="Purchase Invoices" />
-        <Tab value="SALES" label="Sales Invoices" />
-      </Tabs>
-
-      <DataTable rowData={filtered} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} />
+          <Tabs value={tab} onChange={(e, v) => setTab(v)}>
+            <Tab value="PURCHASE" label="Purchase Invoices" />
+            <Tab value="SALES" label="Sales Invoices" />
+          </Tabs>
+        </>
+      }
+    >
+      <DataTable rowData={filtered} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} fillHeight />
 
       <Dialog open={openPurchase} onClose={() => setOpenPurchase(false)} fullWidth maxWidth="sm">
         <DialogTitle>Book Purchase Invoice</DialogTitle>
@@ -172,6 +177,6 @@ export default function InvoicesPage() {
           <Button variant="contained" color="primary" onClick={salesForm.handleSubmit(submitSales)} disabled={salesForm.formState.isSubmitting}>Raise Invoice</Button>
         </DialogActions>
       </Dialog>
-    </>
+    </ListPageLayout>
   );
 }

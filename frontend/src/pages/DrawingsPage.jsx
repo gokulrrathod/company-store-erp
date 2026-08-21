@@ -4,6 +4,7 @@ import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../components/DataTable.jsx';
+import ListPageLayout from '../components/ListPageLayout.jsx';
 import { api } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 
@@ -52,16 +53,19 @@ export default function DrawingsPage() {
   ];
 
   return (
-    <>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h5">Drawings</Typography>
-        {canCreate && (
-          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => navigate('/drawings/new')}>
-            New Drawing
-          </Button>
-        )}
-      </Stack>
-      <DataTable rowData={drawings} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} />
-    </>
+    <ListPageLayout
+      header={
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h5">Drawings</Typography>
+          {canCreate && (
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => navigate('/drawings/new')}>
+              New Drawing
+            </Button>
+          )}
+        </Stack>
+      }
+    >
+      <DataTable rowData={drawings} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} fillHeight />
+    </ListPageLayout>
   );
 }

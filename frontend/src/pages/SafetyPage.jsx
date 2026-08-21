@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DataTable from '../components/DataTable.jsx';
+import ListPageLayout from '../components/ListPageLayout.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import RHFSelect from '../components/form/RHFSelect.jsx';
 import { safetySchema } from '../validation/schemas.js';
@@ -102,17 +103,19 @@ export default function SafetyPage() {
   ];
 
   return (
-    <>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h5">Safety, Chemical &amp; Compliance Incident Log</Typography>
-        {canCreate && (
-          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openDialog}>
-            Log Safety Incident / Audit
-          </Button>
-        )}
-      </Stack>
-
-      <DataTable rowData={logs} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} />
+    <ListPageLayout
+      header={
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h5">Safety, Chemical &amp; Compliance Incident Log</Typography>
+          {canCreate && (
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openDialog}>
+              Log Safety Incident / Audit
+            </Button>
+          )}
+        </Stack>
+      }
+    >
+      <DataTable rowData={logs} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} fillHeight />
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Log Safety Incident / Audit</DialogTitle>
@@ -131,6 +134,6 @@ export default function SafetyPage() {
           <Button variant="contained" color="primary" onClick={handleSubmit(onSubmit)} disabled={isSubmitting}>Save</Button>
         </DialogActions>
       </Dialog>
-    </>
+    </ListPageLayout>
   );
 }

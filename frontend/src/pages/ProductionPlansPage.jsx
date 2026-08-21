@@ -8,6 +8,7 @@ import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../components/DataTable.jsx';
+import ListPageLayout from '../components/ListPageLayout.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import { productionPlanSchema } from '../validation/schemas.js';
 import { applyServerErrors } from '../utils/applyServerErrors.js';
@@ -85,17 +86,19 @@ export default function ProductionPlansPage() {
   ];
 
   return (
-    <>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h5">Weekly Production Plans</Typography>
-        {canCreate && (
-          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openDialog}>
-            New Plan
-          </Button>
-        )}
-      </Stack>
-
-      <DataTable rowData={plans} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} />
+    <ListPageLayout
+      header={
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h5">Weekly Production Plans</Typography>
+          {canCreate && (
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openDialog}>
+              New Plan
+            </Button>
+          )}
+        </Stack>
+      }
+    >
+      <DataTable rowData={plans} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} fillHeight />
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>New Weekly Production Plan</DialogTitle>
@@ -116,6 +119,6 @@ export default function ProductionPlansPage() {
           <Button variant="contained" color="primary" onClick={handleSubmit(onSubmit)} disabled={isSubmitting}>Create</Button>
         </DialogActions>
       </Dialog>
-    </>
+    </ListPageLayout>
   );
 }

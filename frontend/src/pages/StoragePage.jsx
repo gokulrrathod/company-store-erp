@@ -5,6 +5,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import { IconButton } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../components/DataTable.jsx';
+import ListPageLayout from '../components/ListPageLayout.jsx';
 import { api } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 
@@ -51,16 +52,19 @@ export default function StoragePage() {
   ];
 
   return (
-    <>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h5">Material Master &amp; Rack/Bin Storage</Typography>
-        {canManage && (
-          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => navigate('/storage/new')}>
-            Add Material / Storage Bin
-          </Button>
-        )}
-      </Stack>
-      <DataTable rowData={items} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} />
-    </>
+    <ListPageLayout
+      header={
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h5">Material Master &amp; Rack/Bin Storage</Typography>
+          {canManage && (
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => navigate('/storage/new')}>
+              Add Material / Storage Bin
+            </Button>
+          )}
+        </Stack>
+      }
+    >
+      <DataTable rowData={items} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} fillHeight />
+    </ListPageLayout>
   );
 }

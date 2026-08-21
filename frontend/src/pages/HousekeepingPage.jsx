@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DataTable from '../components/DataTable.jsx';
+import ListPageLayout from '../components/ListPageLayout.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import RHFSelect from '../components/form/RHFSelect.jsx';
 import { housekeepingSchema } from '../validation/schemas.js';
@@ -76,17 +77,19 @@ export default function HousekeepingPage() {
   ];
 
   return (
-    <>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h5">Store Housekeeping &amp; Maintenance Checklist</Typography>
-        {canCreate && (
-          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openDialog}>
-            Log Housekeeping Activity
-          </Button>
-        )}
-      </Stack>
-
-      <DataTable rowData={logs} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} />
+    <ListPageLayout
+      header={
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h5">Store Housekeeping &amp; Maintenance Checklist</Typography>
+          {canCreate && (
+            <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openDialog}>
+              Log Housekeeping Activity
+            </Button>
+          )}
+        </Stack>
+      }
+    >
+      <DataTable rowData={logs} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} fillHeight />
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Log Housekeeping Activity</DialogTitle>
@@ -104,6 +107,6 @@ export default function HousekeepingPage() {
           <Button variant="contained" color="primary" onClick={handleSubmit(onSubmit)} disabled={isSubmitting}>Save</Button>
         </DialogActions>
       </Dialog>
-    </>
+    </ListPageLayout>
   );
 }

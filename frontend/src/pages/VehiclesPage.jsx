@@ -8,6 +8,7 @@ import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../components/DataTable.jsx';
+import ListPageLayout from '../components/ListPageLayout.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import RHFSelect from '../components/form/RHFSelect.jsx';
 import { vehicleSchema } from '../validation/schemas.js';
@@ -99,40 +100,44 @@ export default function VehiclesPage() {
   ];
 
   return (
-    <>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h5">Vehicle Master</Typography>
-        {canCreate && (
-          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openDialog}>
-            New Vehicle
-          </Button>
-        )}
-      </Stack>
+    <ListPageLayout
+      header={
+        <>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+            <Typography variant="h5">Vehicle Master</Typography>
+            {canCreate && (
+              <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openDialog}>
+                New Vehicle
+              </Button>
+            )}
+          </Stack>
 
-      {dashboard && (
-        <Grid container spacing={2} sx={{ mb: 2 }}>
-          {[
-            ['Total Vehicles', dashboard.total_vehicles],
-            ['Active', dashboard.active_vehicles],
-            ['Expiring ≤30d', dashboard.expiring_30],
-            ['Expiring ≤60d', dashboard.expiring_60],
-            ['Expiring ≤90d', dashboard.expiring_90],
-            ['Expired', dashboard.expired],
-            ['Missing Insurance', dashboard.missing_insurance],
-          ].map(([label, value]) => (
-            <Grid item xs={6} sm={4} md={12 / 7} key={label}>
-              <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center' }}>
-                <Typography variant="h6">{value}</Typography>
-                <Typography variant="caption" color="text.secondary">{label}</Typography>
-              </Paper>
+          {dashboard && (
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              {[
+                ['Total Vehicles', dashboard.total_vehicles],
+                ['Active', dashboard.active_vehicles],
+                ['Expiring ≤30d', dashboard.expiring_30],
+                ['Expiring ≤60d', dashboard.expiring_60],
+                ['Expiring ≤90d', dashboard.expiring_90],
+                ['Expired', dashboard.expired],
+                ['Missing Insurance', dashboard.missing_insurance],
+              ].map(([label, value]) => (
+                <Grid item xs={6} sm={4} md={12 / 7} key={label}>
+                  <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center' }}>
+                    <Typography variant="h6">{value}</Typography>
+                    <Typography variant="caption" color="text.secondary">{label}</Typography>
+                  </Paper>
+                </Grid>
+              ))}
             </Grid>
-          ))}
-        </Grid>
-      )}
+          )}
 
-      {readOnly && <Alert severity="info" sx={{ mb: 2 }}>Management role has read-only access to Transport records.</Alert>}
-
-      <DataTable rowData={vehicles} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} />
+          {readOnly && <Alert severity="info">Management role has read-only access to Transport records.</Alert>}
+        </>
+      }
+    >
+      <DataTable rowData={vehicles} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} fillHeight />
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>New Vehicle</DialogTitle>
@@ -149,6 +154,6 @@ export default function VehiclesPage() {
           <Button variant="contained" color="primary" onClick={handleSubmit(onSubmit)} disabled={isSubmitting}>Create</Button>
         </DialogActions>
       </Dialog>
-    </>
+    </ListPageLayout>
   );
 }

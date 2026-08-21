@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Typography, Chip, Alert } from '@mui/material';
 import DataTable from '../components/DataTable.jsx';
+import ListPageLayout from '../components/ListPageLayout.jsx';
 import { api } from '../api/client.js';
 
 export default function LowStockPage() {
@@ -27,13 +28,12 @@ export default function LowStockPage() {
   ];
 
   return (
-    <>
-      <Typography variant="h5" gutterBottom>Low Stock Alerts</Typography>
+    <ListPageLayout header={<Typography variant="h5">Low Stock Alerts</Typography>}>
       {loaded && items.length === 0 ? (
         <Alert severity="success">All items are above their reorder level.</Alert>
       ) : (
-        <DataTable rowData={items} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} pagination={false} />
+        <DataTable rowData={items} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} pagination={false} fillHeight />
       )}
-    </>
+    </ListPageLayout>
   );
 }

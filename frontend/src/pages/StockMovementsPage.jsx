@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DataTable from '../components/DataTable.jsx';
+import ListPageLayout from '../components/ListPageLayout.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import RHFSelect from '../components/form/RHFSelect.jsx';
 import { stockMovementSchema } from '../validation/schemas.js';
@@ -67,15 +68,17 @@ export default function StockMovementsPage() {
   ];
 
   return (
-    <>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="h5">Stock Movements</Typography>
-        <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openDialog}>
-          New Entry
-        </Button>
-      </Stack>
-
-      <DataTable rowData={movements} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} />
+    <ListPageLayout
+      header={
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h5">Stock Movements</Typography>
+          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={openDialog}>
+            New Entry
+          </Button>
+        </Stack>
+      }
+    >
+      <DataTable rowData={movements} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} fillHeight />
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>New Stock Movement</DialogTitle>
@@ -94,6 +97,6 @@ export default function StockMovementsPage() {
           <Button variant="contained" color="primary" onClick={handleSubmit(onSubmit)} disabled={isSubmitting}>Save</Button>
         </DialogActions>
       </Dialog>
-    </>
+    </ListPageLayout>
   );
 }
