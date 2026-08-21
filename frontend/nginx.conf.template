@@ -4,8 +4,16 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # Railway assigns the backend a new internal address on every redeploy. A
+    # bare hostname in proxy_pass is resolved once at nginx startup and cached
+    # forever, so a redeploy leaves this container proxying to a dead IP until
+    # nginx itself restarts. Using a variable forces re-resolution per the
+    # resolver's TTL instead.
+    resolver ${NGINX_RESOLVER} valid=10s ipv6=on;
+
     location /api/ {
-        proxy_pass http://${NGINX_BACKEND_HOST}/api/;
+        set $backend_upstream ${NGINX_BACKEND_HOST};
+        proxy_pass http://$backend_upstream/api/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
