@@ -54,7 +54,6 @@ export const materialRequestStatusSchema = z.object({
 });
 
 export const purchaseOrderSchema = z.object({
-  po_number: requiredString('PO number', 50),
   supplier_id: z.coerce.number().int().positive('Select a supplier'),
   department: requiredString('Department', 100),
   lines: z.array(z.object({
@@ -367,7 +366,6 @@ export const insuranceRecordSchema = z.object({
 // ===== Accounts =====
 
 export const purchaseInvoiceSchema = z.object({
-  invoice_number: requiredString('Invoice number', 50),
   party_name: requiredString('Party name', 200),
   gstin: optionalString(20),
   purchase_order_id: z.coerce.number().int().positive('Select a purchase order'),
@@ -378,7 +376,6 @@ export const purchaseInvoiceSchema = z.object({
 });
 
 export const salesInvoiceSchema = z.object({
-  invoice_number: requiredString('Invoice number', 50),
   sales_order_id: z.coerce.number().int().positive('Select a sales order'),
   gstin: optionalString(20),
   taxable_amount: positiveNumber,

@@ -9,6 +9,16 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 const router = Router();
 router.use(requireAuth);
 
+async function nextInvoiceNumber(client, invoiceType, prefix) {
+  const { rows } = await client.query(
+    `SELECT invoice_number FROM invoices WHERE invoice_type = $1 ORDER BY id DESC LIMIT 1`,
+    [invoiceType]
+  );
+  const lastSeq = rows.length ? Number(rows[0].invoice_number.split('-').pop()) : 0;
+  const year = new Date().getFullYear();
+  return `${prefix}-${year}-${String(lastSeq + 1).padStart(4, '0')}`;
+}
+
 async function withBalance(rows) {
   const ids = rows.map((r) => r.id);
   if (!ids.length) return rows;
@@ -56,7 +66,7 @@ router.get('/eligible-grns/:poId', asyncHandler(async (req, res) => {
 }));
 
 router.post('/purchase', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(purchaseInvoiceSchema), asyncHandler(async (req, res) => {
-  const { invoice_number, party_name, gstin, purchase_order_id, material_receipt_id, taxable_amount, gst_percent, due_date } = req.body;
+  const { party_name, gstin, purchase_order_id, material_receipt_id, taxable_amount, gst_percent, due_date } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -67,6 +77,7 @@ router.post('/purchase', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(purc
     if (!grnRows.length) throw new Error('GRN does not belong to the selected purchase order');
     if (grnRows[0].status !== 'APPROVED') throw new Error('GRN must be Approved (post-inspection) before invoice booking — three-way match required');
 
+    const invoice_number = await nextInvoiceNumber(client, 'PURCHASE', 'PINV');
     const gst_amount = Number(taxable_amount) * (Number(gst_percent) / 100);
     const total_amount = Number(taxable_amount) + gst_amount;
 
@@ -90,7 +101,7 @@ router.post('/purchase', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(purc
 }));
 
 router.post('/sales', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(salesInvoiceSchema), asyncHandler(async (req, res) => {
-  const { invoice_number, sales_order_id, gstin, taxable_amount, gst_percent, due_date } = req.body;
+  const { sales_order_id, gstin, taxable_amount, gst_percent, due_date } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -101,6 +112,7 @@ router.post('/sales', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(salesIn
     if (!soRows.length) throw new Error('Sales order not found');
     if (!soRows[0].dc_number) throw new Error('Sales order has no Delivery Challan number');
 
+    const invoice_number = await nextInvoiceNumber(client, 'SALES', 'SINV');
     const gst_amount = Number(taxable_amount) * (Number(gst_percent) / 100);
     const total_amount = Number(taxable_amount) + gst_amount;
 

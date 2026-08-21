@@ -9,6 +9,13 @@ import { asyncHandler } from '../middleware/asyncHandler.js';
 const router = Router();
 router.use(requireAuth);
 
+async function nextPoNumber(client) {
+  const { rows } = await client.query(`SELECT po_number FROM purchase_orders ORDER BY id DESC LIMIT 1`);
+  const lastSeq = rows.length ? Number(rows[0].po_number.split('-').pop()) : 0;
+  const year = new Date().getFullYear();
+  return `PO-${year}-${String(lastSeq + 1).padStart(4, '0')}`;
+}
+
 router.get('/', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT po.*, s.name AS supplier_name
@@ -37,11 +44,12 @@ router.get('/:id', asyncHandler(async (req, res) => {
 // Budget must be verified before/at PO creation; exceeding it escalates to Finance rather than blocking
 // (Requirements-Purchase.md §1 Budget rule, §11 AC2)
 router.post('/', requireRole(ROLES.PURCHASE, ROLES.ADMIN), validate(purchaseOrderSchema), asyncHandler(async (req, res) => {
-  const { po_number, supplier_id, department, lines } = req.body;
+  const { supplier_id, department, lines } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
+    const po_number = await nextPoNumber(client);
     let total_value = 0;
     for (const line of lines) {
       const { rows: itemRows } = await client.query(`SELECT unit_rate FROM items WHERE id = $1`, [line.item_id]);

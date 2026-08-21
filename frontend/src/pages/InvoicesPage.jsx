@@ -41,11 +41,11 @@ export default function InvoicesPage() {
 
   const purchaseForm = useForm({
     resolver: zodResolver(purchaseInvoiceSchema),
-    defaultValues: { invoice_number: '', party_name: '', gstin: '', purchase_order_id: '', material_receipt_id: '', taxable_amount: '', gst_percent: 18, due_date: '' },
+    defaultValues: { party_name: '', gstin: '', purchase_order_id: '', material_receipt_id: '', taxable_amount: '', gst_percent: 18, due_date: '' },
   });
   const salesForm = useForm({
     resolver: zodResolver(salesInvoiceSchema),
-    defaultValues: { invoice_number: '', sales_order_id: '', gstin: '', taxable_amount: '', gst_percent: 18, due_date: '' },
+    defaultValues: { sales_order_id: '', gstin: '', taxable_amount: '', gst_percent: 18, due_date: '' },
   });
 
   const selectedPoId = purchaseForm.watch('purchase_order_id');
@@ -56,12 +56,12 @@ export default function InvoicesPage() {
 
   const openPurchaseDialog = () => {
     setFormError('');
-    purchaseForm.reset({ invoice_number: '', party_name: '', gstin: '', purchase_order_id: '', material_receipt_id: '', taxable_amount: '', gst_percent: 18, due_date: '' });
+    purchaseForm.reset({ party_name: '', gstin: '', purchase_order_id: '', material_receipt_id: '', taxable_amount: '', gst_percent: 18, due_date: '' });
     setOpenPurchase(true);
   };
   const openSalesDialog = () => {
     setFormError('');
-    salesForm.reset({ invoice_number: '', sales_order_id: '', gstin: '', taxable_amount: '', gst_percent: 18, due_date: '' });
+    salesForm.reset({ sales_order_id: '', gstin: '', taxable_amount: '', gst_percent: 18, due_date: '' });
     setOpenSales(true);
   };
 
@@ -139,8 +139,7 @@ export default function InvoicesPage() {
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {formError && <Alert severity="error">{formError}</Alert>}
-            <Alert severity="info">Three-way match: the selected GRN must be Approved (post-inspection) against the selected PO.</Alert>
-            <RHFTextField name="invoice_number" control={purchaseForm.control} label="Invoice Number" required />
+            <Alert severity="info">Three-way match: the selected GRN must be Approved (post-inspection) against the selected PO. Invoice number is auto-generated.</Alert>
             <RHFTextField name="party_name" control={purchaseForm.control} label="Party (Vendor) Name" required />
             <RHFTextField name="gstin" control={purchaseForm.control} label="GSTIN" />
             <RHFSelect name="purchase_order_id" control={purchaseForm.control} label="Purchase Order" required options={purchaseOrders} getLabel={(o) => o.po_number} getValue={(o) => o.id} />
@@ -161,7 +160,6 @@ export default function InvoicesPage() {
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {formError && <Alert severity="error">{formError}</Alert>}
-            <RHFTextField name="invoice_number" control={salesForm.control} label="Invoice Number" required />
             <RHFSelect name="sales_order_id" control={salesForm.control} label="Sales Order" required options={salesOrders} getLabel={(o) => `${o.so_number} — ${o.customer_name}`} getValue={(o) => o.id} />
             <RHFTextField name="gstin" control={salesForm.control} label="GSTIN" />
             <RHFTextField name="taxable_amount" control={salesForm.control} label="Taxable Amount (₹)" type="number" required />

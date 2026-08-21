@@ -25,7 +25,7 @@ export default function PurchaseOrderFormPage() {
     formState: { isSubmitting, errors },
   } = useForm({
     resolver: zodResolver(purchaseOrderSchema),
-    defaultValues: { po_number: '', supplier_id: '', department: '', lines: [{ item_id: '', quantity_ordered: '' }] },
+    defaultValues: { supplier_id: '', department: '', lines: [{ item_id: '', quantity_ordered: '' }] },
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'lines' });
 
@@ -60,9 +60,6 @@ export default function PurchaseOrderFormPage() {
       }
     >
       <Grid container spacing={2.5}>
-        <Grid item xs={12} sm={6}>
-          <RHFTextField name="po_number" control={control} label="PO Number" required />
-        </Grid>
         <Grid item xs={12} sm={6}>
           <RHFSelect
             name="supplier_id" control={control} label="Supplier" required
