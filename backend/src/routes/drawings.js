@@ -16,14 +16,25 @@ async function nextNumber(client, table, column, prefix) {
   return `${prefix}-${year}-${String(lastSeq + 1).padStart(4, '0')}`;
 }
 
+// Design team sees every status including drafts; everyone else (Purchase, Production, etc.)
+// only sees Released drawings/BOMs (Requirements-Design.md §11 AC5)
+const DESIGN_TEAM_ROLES = [ROLES.DESIGN_ENGINEER, ROLES.CHECKER, ROLES.DESIGN_HEAD, ROLES.ADMIN];
+
 router.get('/', async (req, res) => {
-  const { rows } = await pool.query(`SELECT * FROM drawings ORDER BY created_at DESC`);
+  const restricted = !DESIGN_TEAM_ROLES.includes(req.user.role);
+  const { rows } = await pool.query(
+    restricted
+      ? `SELECT * FROM drawings WHERE status = 'RELEASED' ORDER BY created_at DESC`
+      : `SELECT * FROM drawings ORDER BY created_at DESC`
+  );
   res.json(rows);
 });
 
 router.get('/:id', async (req, res) => {
+  const restricted = !DESIGN_TEAM_ROLES.includes(req.user.role);
   const { rows } = await pool.query(`SELECT * FROM drawings WHERE id = $1`, [req.params.id]);
   if (!rows.length) return res.status(404).json({ error: 'Drawing not found' });
+  if (restricted && rows[0].status !== 'RELEASED') return res.status(404).json({ error: 'Drawing not found' });
 
   const { rows: bomLines } = await pool.query(`SELECT * FROM bom_lines WHERE drawing_id = $1 ORDER BY item_no`, [req.params.id]);
   const { rows: ecns } = await pool.query(`SELECT * FROM engineering_change_notices WHERE drawing_id = $1 ORDER BY created_at DESC`, [req.params.id]);
