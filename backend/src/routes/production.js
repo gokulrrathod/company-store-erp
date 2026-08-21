@@ -6,18 +6,19 @@ import {
   productionPlanSchema, scheduleSchema, scheduleStatusSchema, stageInspectionSchema, reworkRejectionSchema,
 } from '../validation/schemas.js';
 import { ROLES } from '../config/auth.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
 router.use(requireAuth);
 
 // ===== Weekly Production Plans =====
 
-router.get('/plans', async (req, res) => {
+router.get('/plans', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(`SELECT * FROM production_plans ORDER BY created_at DESC`);
   res.json(rows);
-});
+}));
 
-router.get('/plans/:id', async (req, res) => {
+router.get('/plans/:id', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(`SELECT * FROM production_plans WHERE id = $1`, [req.params.id]);
   if (!rows.length) return res.status(404).json({ error: 'Plan not found' });
   const { rows: schedules } = await pool.query(
@@ -25,9 +26,9 @@ router.get('/plans/:id', async (req, res) => {
     [req.params.id]
   );
   res.json({ ...rows[0], schedules });
-});
+}));
 
-router.post('/plans', requireRole(ROLES.PRODUCTION, ROLES.PRODUCTION_HEAD, ROLES.ADMIN), validate(productionPlanSchema), async (req, res) => {
+router.post('/plans', requireRole(ROLES.PRODUCTION, ROLES.PRODUCTION_HEAD, ROLES.ADMIN), validate(productionPlanSchema), asyncHandler(async (req, res) => {
   const { project_reference, week_number, start_date, end_date, planned_quantity, planned_completion_date, production_engineer } = req.body;
   const { rows } = await pool.query(
     `INSERT INTO production_plans (project_reference, week_number, start_date, end_date, planned_quantity, planned_completion_date, production_engineer)
@@ -35,10 +36,10 @@ router.post('/plans', requireRole(ROLES.PRODUCTION, ROLES.PRODUCTION_HEAD, ROLES
     [project_reference, week_number, start_date, end_date, planned_quantity, planned_completion_date || null, production_engineer]
   );
   res.status(201).json(rows[0]);
-});
+}));
 
 // A plan is not active until Production Head Approval is recorded (Requirements-Production.md §3, AC2)
-router.patch('/plans/:id/approve', requireRole(ROLES.PRODUCTION_HEAD, ROLES.ADMIN), async (req, res) => {
+router.patch('/plans/:id/approve', requireRole(ROLES.PRODUCTION_HEAD, ROLES.ADMIN), asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `UPDATE production_plans SET status = 'APPROVED', approved_by = $1, approved_at = now()
      WHERE id = $2 AND status = 'DRAFT' RETURNING *`,
@@ -46,11 +47,11 @@ router.patch('/plans/:id/approve', requireRole(ROLES.PRODUCTION_HEAD, ROLES.ADMI
   );
   if (!rows.length) return res.status(400).json({ error: 'Plan not found or already approved' });
   res.json(rows[0]);
-});
+}));
 
 // ===== Production Schedules (shop-floor activities) — only against an approved plan =====
 
-router.post('/plans/:id/schedules', requireRole(ROLES.PRODUCTION, ROLES.SHOP_FLOOR_ENGINEER, ROLES.ADMIN), validate(scheduleSchema), async (req, res) => {
+router.post('/plans/:id/schedules', requireRole(ROLES.PRODUCTION, ROLES.SHOP_FLOOR_ENGINEER, ROLES.ADMIN), validate(scheduleSchema), asyncHandler(async (req, res) => {
   const { rows: planRows } = await pool.query(`SELECT status FROM production_plans WHERE id = $1`, [req.params.id]);
   if (!planRows.length) return res.status(404).json({ error: 'Plan not found' });
   if (planRows[0].status !== 'APPROVED') return res.status(400).json({ error: 'Activities cannot be scheduled against a Draft plan' });
@@ -62,9 +63,9 @@ router.post('/plans/:id/schedules', requireRole(ROLES.PRODUCTION, ROLES.SHOP_FLO
     [req.params.id, equipment_name, activity, planned_start_date || null, planned_end_date || null, responsible_engineer]
   );
   res.status(201).json(rows[0]);
-});
+}));
 
-router.get('/schedules/:id', async (req, res) => {
+router.get('/schedules/:id', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(`SELECT * FROM production_schedules WHERE id = $1`, [req.params.id]);
   if (!rows.length) return res.status(404).json({ error: 'Schedule not found' });
   const { rows: inspections } = await pool.query(
@@ -74,9 +75,9 @@ router.get('/schedules/:id', async (req, res) => {
     `SELECT * FROM rework_rejections WHERE schedule_id = $1 ORDER BY created_at DESC`, [req.params.id]
   );
   res.json({ ...rows[0], inspections, reworks });
-});
+}));
 
-router.patch('/schedules/:id/status', requireRole(ROLES.PRODUCTION, ROLES.SHOP_FLOOR_ENGINEER, ROLES.ADMIN), validate(scheduleStatusSchema), async (req, res) => {
+router.patch('/schedules/:id/status', requireRole(ROLES.PRODUCTION, ROLES.SHOP_FLOOR_ENGINEER, ROLES.ADMIN), validate(scheduleStatusSchema), asyncHandler(async (req, res) => {
   const { status, delay_reason, actual_start_date, actual_end_date } = req.body;
   const { rows } = await pool.query(
     `UPDATE production_schedules
@@ -86,11 +87,11 @@ router.patch('/schedules/:id/status', requireRole(ROLES.PRODUCTION, ROLES.SHOP_F
   );
   if (!rows.length) return res.status(404).json({ error: 'Schedule not found' });
   res.json(rows[0]);
-});
+}));
 
 // ===== Stage Inspection (in-process shop-floor QC — distinct from Store's GRN Inspection) =====
 
-router.post('/schedules/:id/stage-inspections', requireRole(ROLES.QUALITY, ROLES.SHOP_FLOOR_ENGINEER, ROLES.ADMIN), validate(stageInspectionSchema), async (req, res) => {
+router.post('/schedules/:id/stage-inspections', requireRole(ROLES.QUALITY, ROLES.SHOP_FLOOR_ENGINEER, ROLES.ADMIN), validate(stageInspectionSchema), asyncHandler(async (req, res) => {
   const { inspection_stage, inspector_name, status, remarks } = req.body;
   const { rows } = await pool.query(
     `INSERT INTO stage_inspections (schedule_id, inspection_stage, inspector_name, status, remarks)
@@ -98,11 +99,11 @@ router.post('/schedules/:id/stage-inspections', requireRole(ROLES.QUALITY, ROLES
     [req.params.id, inspection_stage, inspector_name, status, remarks || null]
   );
   res.status(201).json(rows[0]);
-});
+}));
 
 // ===== Rework & Rejection (rolls up into the NCR Report) =====
 
-router.post('/schedules/:id/rework-rejections', requireRole(ROLES.PRODUCTION, ROLES.SHOP_FLOOR_ENGINEER, ROLES.ADMIN), validate(reworkRejectionSchema), async (req, res) => {
+router.post('/schedules/:id/rework-rejections', requireRole(ROLES.PRODUCTION, ROLES.SHOP_FLOOR_ENGINEER, ROLES.ADMIN), validate(reworkRejectionSchema), asyncHandler(async (req, res) => {
   const { part_name, quantity_produced, rework_qty, rejection_qty, reason, corrective_action, responsible_engineer } = req.body;
   const { rows } = await pool.query(
     `INSERT INTO rework_rejections (schedule_id, part_name, quantity_produced, rework_qty, rejection_qty, reason, corrective_action, responsible_engineer)
@@ -110,6 +111,6 @@ router.post('/schedules/:id/rework-rejections', requireRole(ROLES.PRODUCTION, RO
     [req.params.id, part_name, quantity_produced, rework_qty, rejection_qty, reason, corrective_action || null, responsible_engineer]
   );
   res.status(201).json(rows[0]);
-});
+}));
 
 export default router;

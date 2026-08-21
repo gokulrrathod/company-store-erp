@@ -6,10 +6,11 @@ import { JWT_SECRET } from '../config/auth.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { loginSchema } from '../validation/schemas.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
 
-router.post('/login', validate(loginSchema), async (req, res) => {
+router.post('/login', validate(loginSchema), asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
   const user = rows[0];
@@ -23,7 +24,7 @@ router.post('/login', validate(loginSchema), async (req, res) => {
     { expiresIn: '8h' }
   );
   res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
-});
+}));
 
 router.get('/me', requireAuth, (req, res) => res.json(req.user));
 

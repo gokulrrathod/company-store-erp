@@ -6,6 +6,7 @@ import {
   projectSchema, projectStatusSchema, dprSchema, measurementEntrySchema, raBillSchema, reconciliationSchema,
 } from '../validation/schemas.js';
 import { ROLES } from '../config/auth.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -17,12 +18,12 @@ async function nextNumber(client, table, column, prefix) {
   return `${prefix}-${year}-${String(lastSeq + 1).padStart(4, '0')}`;
 }
 
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(`SELECT * FROM projects ORDER BY created_at DESC`);
   res.json(rows);
-});
+}));
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(`SELECT * FROM projects WHERE id = $1`, [req.params.id]);
   if (!rows.length) return res.status(404).json({ error: 'Project not found' });
 
@@ -52,9 +53,9 @@ router.get('/:id', async (req, res) => {
     reconciliation: reconRes.rows[0] || null,
     excess_saving: excessSaving,
   });
-});
+}));
 
-router.post('/', requireRole(ROLES.PROJECT_MANAGER, ROLES.ADMIN), validate(projectSchema), async (req, res) => {
+router.post('/', requireRole(ROLES.PROJECT_MANAGER, ROLES.ADMIN), validate(projectSchema), asyncHandler(async (req, res) => {
   const { project_name, client_name, site_location, company, project_type, start_date, expected_completion_date, project_value, project_manager, site_engineer } = req.body;
   const { rows } = await pool.query(
     `INSERT INTO projects (project_name, client_name, site_location, company, project_type, start_date, expected_completion_date, project_value, project_manager, site_engineer)
@@ -63,9 +64,9 @@ router.post('/', requireRole(ROLES.PROJECT_MANAGER, ROLES.ADMIN), validate(proje
       expected_completion_date || null, project_value ?? 0, project_manager, site_engineer || null]
   );
   res.status(201).json(rows[0]);
-});
+}));
 
-router.patch('/:id/status', requireRole(ROLES.PROJECT_MANAGER, ROLES.ADMIN), validate(projectStatusSchema), async (req, res) => {
+router.patch('/:id/status', requireRole(ROLES.PROJECT_MANAGER, ROLES.ADMIN), validate(projectStatusSchema), asyncHandler(async (req, res) => {
   const { status } = req.body;
   const { rows } = await pool.query(
     `UPDATE projects SET status = $1 WHERE id = $2 AND status != 'CLOSED' RETURNING *`,
@@ -73,9 +74,9 @@ router.patch('/:id/status', requireRole(ROLES.PROJECT_MANAGER, ROLES.ADMIN), val
   );
   if (!rows.length) return res.status(400).json({ error: 'Project not found or already closed' });
   res.json(rows[0]);
-});
+}));
 
-router.post('/:id/dpr', requireRole(ROLES.SITE_ENGINEER, ROLES.PROJECT_MANAGER, ROLES.ADMIN), validate(dprSchema), async (req, res) => {
+router.post('/:id/dpr', requireRole(ROLES.SITE_ENGINEER, ROLES.PROJECT_MANAGER, ROLES.ADMIN), validate(dprSchema), asyncHandler(async (req, res) => {
   const { report_date, work_done, labour_count, material_used, machinery_used, issues } = req.body;
   const { rows } = await pool.query(
     `INSERT INTO daily_progress_reports (project_id, report_date, work_done, labour_count, material_used, machinery_used, issues, submitted_by)
@@ -83,9 +84,9 @@ router.post('/:id/dpr', requireRole(ROLES.SITE_ENGINEER, ROLES.PROJECT_MANAGER, 
     [req.params.id, report_date, work_done, labour_count ?? 0, material_used || null, machinery_used || null, issues || null, req.user.name]
   );
   res.status(201).json(rows[0]);
-});
+}));
 
-router.post('/:id/measurement-entries', requireRole(ROLES.SITE_ENGINEER, ROLES.PROJECT_MANAGER, ROLES.ADMIN), validate(measurementEntrySchema), async (req, res) => {
+router.post('/:id/measurement-entries', requireRole(ROLES.SITE_ENGINEER, ROLES.PROJECT_MANAGER, ROLES.ADMIN), validate(measurementEntrySchema), asyncHandler(async (req, res) => {
   const { description, quantity, unit, rate, measured_by, measurement_date } = req.body;
   const { rows } = await pool.query(
     `INSERT INTO measurement_book_entries (project_id, description, quantity, unit, rate, measured_by, measurement_date)
@@ -93,10 +94,10 @@ router.post('/:id/measurement-entries', requireRole(ROLES.SITE_ENGINEER, ROLES.P
     [req.params.id, description, quantity, unit || 'unit', rate ?? 0, measured_by, measurement_date]
   );
   res.status(201).json(rows[0]);
-});
+}));
 
 // RA Bill must trace to an existing Measurement Book entry — no free-standing bills (§5, AC3)
-router.post('/:id/ra-bills', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(raBillSchema), async (req, res, next) => {
+router.post('/:id/ra-bills', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(raBillSchema), asyncHandler(async (req, res, next) => {
   const { measurement_entry_id, bill_type, party_name, amount } = req.body;
   try {
     const { rows: mbRows } = await pool.query(
@@ -125,10 +126,10 @@ router.post('/:id/ra-bills', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(
   } catch (err) {
     next(err);
   }
-});
+}));
 
 // Upsert the reconciliation record; both flags must be true before the project can be Closed
-router.patch('/:id/reconciliation', requireRole(ROLES.PROJECT_MANAGER, ROLES.ACCOUNTS, ROLES.ADMIN), validate(reconciliationSchema), async (req, res) => {
+router.patch('/:id/reconciliation', requireRole(ROLES.PROJECT_MANAGER, ROLES.ACCOUNTS, ROLES.ADMIN), validate(reconciliationSchema), asyncHandler(async (req, res) => {
   const { material_reconciliation_complete, cost_reconciliation_complete, material_return_note, remarks } = req.body;
   const bothComplete = !!material_reconciliation_complete && !!cost_reconciliation_complete;
   const { rows } = await pool.query(
@@ -146,10 +147,10 @@ router.patch('/:id/reconciliation', requireRole(ROLES.PROJECT_MANAGER, ROLES.ACC
       material_return_note || null, remarks || null, req.user.name, bothComplete]
   );
   res.json(rows[0]);
-});
+}));
 
 // Closure is disabled until Reconciliation is complete (§5, AC5)
-router.post('/:id/close', requireRole(ROLES.PROJECT_MANAGER, ROLES.ADMIN), async (req, res) => {
+router.post('/:id/close', requireRole(ROLES.PROJECT_MANAGER, ROLES.ADMIN), asyncHandler(async (req, res) => {
   const { rows: reconRows } = await pool.query(`SELECT * FROM reconciliations WHERE project_id = $1`, [req.params.id]);
   const recon = reconRows[0];
   if (!recon || !recon.material_reconciliation_complete || !recon.cost_reconciliation_complete) {
@@ -160,6 +161,6 @@ router.post('/:id/close', requireRole(ROLES.PROJECT_MANAGER, ROLES.ADMIN), async
     [req.params.id]
   );
   res.json(rows[0]);
-});
+}));
 
 export default router;

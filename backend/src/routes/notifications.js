@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
 import { ROLES } from '../config/auth.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -179,7 +180,7 @@ const CHECKS = [
   },
 ];
 
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const role = req.user.role;
   const relevant = CHECKS.filter((c) => c.roles.includes(role));
 
@@ -195,6 +196,6 @@ router.get('/', async (req, res) => {
     .map((r) => ({ key: r.key, icon: r.icon, path: r.path, text: r.text(r.n) }));
 
   res.json(items);
-});
+}));
 
 export default router;

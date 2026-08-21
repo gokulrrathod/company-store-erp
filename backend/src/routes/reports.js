@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
 router.use(requireAuth);
 
 // Stock Ledger: every inward/outward movement, most recent first
-router.get('/stock-ledger', async (req, res) => {
+router.get('/stock-ledger', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT m.id, m.type, m.quantity, m.reference, m.remarks, m.created_at,
             i.code AS item_code, i.name AS item_name, i.unit
@@ -14,10 +15,10 @@ router.get('/stock-ledger', async (req, res) => {
      ORDER BY m.created_at DESC`
   );
   res.json(rows);
-});
+}));
 
 // FIFO Report: accepted batches per item, oldest first (first-in-first-out order)
-router.get('/fifo', async (req, res) => {
+router.get('/fifo', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT rl.id, i.code AS item_code, i.name AS item_name, rl.batch_number, rl.expiry_date,
             rl.quantity_received, rl.unit, r.grn_number, r.created_at AS received_at
@@ -28,10 +29,10 @@ router.get('/fifo', async (req, res) => {
      ORDER BY i.name, r.created_at ASC`
   );
   res.json(rows);
-});
+}));
 
 // Batch-wise Stock Report: total received quantity grouped by item + batch
-router.get('/batch-wise', async (req, res) => {
+router.get('/batch-wise', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT i.code AS item_code, i.name AS item_name, rl.batch_number, rl.expiry_date,
             SUM(rl.quantity_received) AS total_received, rl.unit,
@@ -44,10 +45,10 @@ router.get('/batch-wise', async (req, res) => {
      ORDER BY i.name, rl.batch_number`
   );
   res.json(rows);
-});
+}));
 
 // Supplier-wise Receipt Report: GRN count + total quantity received per supplier
-router.get('/supplier-wise-receipts', async (req, res) => {
+router.get('/supplier-wise-receipts', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT s.name AS supplier_name,
             COUNT(DISTINCT r.id) AS grn_count,
@@ -60,10 +61,10 @@ router.get('/supplier-wise-receipts', async (req, res) => {
      ORDER BY s.name`
   );
   res.json(rows);
-});
+}));
 
 // Department-wise Consumption Report: approved requisitions and quantity issued per department
-router.get('/department-wise-consumption', async (req, res) => {
+router.get('/department-wise-consumption', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT department,
             COUNT(*) AS requisition_count,
@@ -74,6 +75,6 @@ router.get('/department-wise-consumption', async (req, res) => {
      ORDER BY department`
   );
   res.json(rows);
-});
+}));
 
 export default router;

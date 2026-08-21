@@ -3,20 +3,21 @@ import { pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { stockMovementSchema } from '../validation/schemas.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
 router.use(requireAuth);
 
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT m.*, i.name AS item_name, i.code AS item_code
      FROM stock_movements m JOIN items i ON i.id = m.item_id
      ORDER BY m.created_at DESC LIMIT 100`
   );
   res.json(rows);
-});
+}));
 
-router.post('/', validate(stockMovementSchema), async (req, res) => {
+router.post('/', validate(stockMovementSchema), asyncHandler(async (req, res) => {
   const { item_id, type, quantity, reference, remarks } = req.body;
 
   const client = await pool.connect();
@@ -43,6 +44,6 @@ router.post('/', validate(stockMovementSchema), async (req, res) => {
   } finally {
     client.release();
   }
-});
+}));
 
 export default router;

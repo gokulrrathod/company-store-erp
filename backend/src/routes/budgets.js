@@ -4,18 +4,19 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { budgetSchema } from '../validation/schemas.js';
 import { ROLES } from '../config/auth.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
 router.use(requireAuth);
 
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT *, (allocated_amount - utilized_amount) AS balance FROM budgets ORDER BY department`
   );
   res.json(rows);
-});
+}));
 
-router.post('/', requireRole(ROLES.FINANCE, ROLES.ADMIN), validate(budgetSchema), async (req, res, next) => {
+router.post('/', requireRole(ROLES.FINANCE, ROLES.ADMIN), validate(budgetSchema), asyncHandler(async (req, res, next) => {
   const { department, allocated_amount } = req.body;
   try {
     const { rows } = await pool.query(
@@ -29,6 +30,6 @@ router.post('/', requireRole(ROLES.FINANCE, ROLES.ADMIN), validate(budgetSchema)
     }
     next(err);
   }
-});
+}));
 
 export default router;

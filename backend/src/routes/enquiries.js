@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { enquirySchema, quotationSchema, negotiateSchema, discountApprovalSchema } from '../validation/schemas.js';
 import { ROLES } from '../config/auth.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -15,18 +16,18 @@ async function nextEnquiryNumber(client) {
   return `ENQ-${year}-${String(lastSeq + 1).padStart(4, '0')}`;
 }
 
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(`SELECT * FROM enquiries ORDER BY created_at DESC`);
   res.json(rows);
-});
+}));
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(`SELECT * FROM enquiries WHERE id = $1`, [req.params.id]);
   if (!rows.length) return res.status(404).json({ error: 'Enquiry not found' });
   res.json(rows[0]);
-});
+}));
 
-router.post('/', requireRole(ROLES.SALES, ROLES.ADMIN), validate(enquirySchema), async (req, res) => {
+router.post('/', requireRole(ROLES.SALES, ROLES.ADMIN), validate(enquirySchema), asyncHandler(async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -45,10 +46,10 @@ router.post('/', requireRole(ROLES.SALES, ROLES.ADMIN), validate(enquirySchema),
   } finally {
     client.release();
   }
-});
+}));
 
 // Sales Representative sends a quotation
-router.patch('/:id/quotation', requireRole(ROLES.SALES, ROLES.ADMIN), validate(quotationSchema), async (req, res) => {
+router.patch('/:id/quotation', requireRole(ROLES.SALES, ROLES.ADMIN), validate(quotationSchema), asyncHandler(async (req, res) => {
   const { quotation_amount, quotation_date } = req.body;
   const { rows } = await pool.query(
     `UPDATE enquiries SET quotation_amount = $1, quotation_date = $2, status = 'QUOTATION_SENT'
@@ -57,10 +58,10 @@ router.patch('/:id/quotation', requireRole(ROLES.SALES, ROLES.ADMIN), validate(q
   );
   if (!rows.length) return res.status(400).json({ error: 'Enquiry not found or not in a state to be quoted' });
   res.json(rows[0]);
-});
+}));
 
 // Sales Representative records negotiated price + discount; >2% discount routes to Management
-router.patch('/:id/negotiate', requireRole(ROLES.SALES, ROLES.ADMIN), validate(negotiateSchema), async (req, res) => {
+router.patch('/:id/negotiate', requireRole(ROLES.SALES, ROLES.ADMIN), validate(negotiateSchema), asyncHandler(async (req, res) => {
   const { negotiated_price, discount_percent, discount_reason } = req.body;
   const needsApproval = discount_percent > 2;
   const { rows } = await pool.query(
@@ -73,10 +74,10 @@ router.patch('/:id/negotiate', requireRole(ROLES.SALES, ROLES.ADMIN), validate(n
   );
   if (!rows.length) return res.status(400).json({ error: 'Enquiry not found or not in a negotiable state' });
   res.json(rows[0]);
-});
+}));
 
 // Management approves/rejects a >2% discount request
-router.patch('/:id/approve-discount', requireRole(ROLES.MANAGEMENT, ROLES.ADMIN), validate(discountApprovalSchema), async (req, res) => {
+router.patch('/:id/approve-discount', requireRole(ROLES.MANAGEMENT, ROLES.ADMIN), validate(discountApprovalSchema), asyncHandler(async (req, res) => {
   const { status } = req.body;
   const { rows } = await pool.query(
     `UPDATE enquiries
@@ -87,6 +88,6 @@ router.patch('/:id/approve-discount', requireRole(ROLES.MANAGEMENT, ROLES.ADMIN)
   );
   if (!rows.length) return res.status(400).json({ error: 'No pending discount approval for this enquiry' });
   res.json(rows[0]);
-});
+}));
 
 export default router;

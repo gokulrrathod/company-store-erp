@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
 router.use(requireAuth);
 
-router.get('/summary', async (req, res) => {
+router.get('/summary', asyncHandler(async (req, res) => {
   const [stockVal, skuCount, lowStock, rejected, pendingInspection, pendingRequests, recentReceipts] = await Promise.all([
     pool.query(`SELECT COALESCE(SUM(quantity * unit_rate), 0) AS total FROM items`),
     pool.query(`SELECT COUNT(*) AS total FROM items`),
@@ -29,6 +30,6 @@ router.get('/summary', async (req, res) => {
     pending_requests_count: Number(pendingRequests.rows[0].total),
     recent_receipts: recentReceipts.rows,
   });
-});
+}));
 
 export default router;

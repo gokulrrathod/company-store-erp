@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { confirmOrderSchema, productionStatusSchema, dispatchSchema, paymentSchema } from '../validation/schemas.js';
 import { ROLES } from '../config/auth.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -15,16 +16,16 @@ async function nextNumber(client, table, column, prefix) {
   return `${prefix}-${year}-${String(lastSeq + 1).padStart(4, '0')}`;
 }
 
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT so.*, e.customer_name, e.enquiry_number
      FROM sales_orders so JOIN enquiries e ON e.id = so.enquiry_id
      ORDER BY so.created_at DESC`
   );
   res.json(rows);
-});
+}));
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT so.*, e.customer_name, e.mobile_number, e.company_name, e.site_address, e.enquiry_number
      FROM sales_orders so JOIN enquiries e ON e.id = so.enquiry_id WHERE so.id = $1`,
@@ -32,10 +33,10 @@ router.get('/:id', async (req, res) => {
   );
   if (!rows.length) return res.status(404).json({ error: 'Sales order not found' });
   res.json(rows[0]);
-});
+}));
 
 // Convert a Price-Approved enquiry into a confirmed Sales Order
-router.post('/from-enquiry/:enquiryId', requireRole(ROLES.SALES, ROLES.ADMIN), validate(confirmOrderSchema), async (req, res) => {
+router.post('/from-enquiry/:enquiryId', requireRole(ROLES.SALES, ROLES.ADMIN), validate(confirmOrderSchema), asyncHandler(async (req, res) => {
   const { payment_terms, advance_payment, expected_dispatch_date, customer_notes } = req.body;
   const client = await pool.connect();
   try {
@@ -79,10 +80,10 @@ router.post('/from-enquiry/:enquiryId', requireRole(ROLES.SALES, ROLES.ADMIN), v
   } finally {
     client.release();
   }
-});
+}));
 
 // Production updates its own progress against the Sales Order (shared entity, no separate copy)
-router.patch('/:id/production-status', requireRole(ROLES.PRODUCTION, ROLES.ADMIN), validate(productionStatusSchema), async (req, res) => {
+router.patch('/:id/production-status', requireRole(ROLES.PRODUCTION, ROLES.ADMIN), validate(productionStatusSchema), asyncHandler(async (req, res) => {
   const { production_status } = req.body;
   const overallStatus = production_status === 'COMPLETED' ? 'PRODUCTION_COMPLETED' : 'IN_PRODUCTION';
   const { rows } = await pool.query(
@@ -92,10 +93,10 @@ router.patch('/:id/production-status', requireRole(ROLES.PRODUCTION, ROLES.ADMIN
   );
   if (!rows.length) return res.status(400).json({ error: 'Sales order not found or not in production' });
   res.json(rows[0]);
-});
+}));
 
 // Sales notifies customer that material is ready
-router.patch('/:id/ready-for-dispatch', requireRole(ROLES.SALES, ROLES.ADMIN), async (req, res) => {
+router.patch('/:id/ready-for-dispatch', requireRole(ROLES.SALES, ROLES.ADMIN), asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `UPDATE sales_orders SET status = 'READY_FOR_DISPATCH'
      WHERE id = $1 AND status = 'PRODUCTION_COMPLETED' RETURNING *`,
@@ -103,10 +104,10 @@ router.patch('/:id/ready-for-dispatch', requireRole(ROLES.SALES, ROLES.ADMIN), a
   );
   if (!rows.length) return res.status(400).json({ error: 'Sales order must be Production Completed first' });
   res.json(rows[0]);
-});
+}));
 
 // Accounts records a payment against the order's balance
-router.patch('/:id/payment', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(paymentSchema), async (req, res) => {
+router.patch('/:id/payment', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(paymentSchema), asyncHandler(async (req, res) => {
   const { amount } = req.body;
   const client = await pool.connect();
   try {
@@ -126,10 +127,10 @@ router.patch('/:id/payment', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(
   } finally {
     client.release();
   }
-});
+}));
 
 // Dispatch: hard-gated on the payment balance and the checklist (SOP Module 6)
-router.post('/:id/dispatch', requireRole(ROLES.DISPATCH, ROLES.ADMIN), validate(dispatchSchema), async (req, res) => {
+router.post('/:id/dispatch', requireRole(ROLES.DISPATCH, ROLES.ADMIN), validate(dispatchSchema), asyncHandler(async (req, res) => {
   const { vehicle_id, driver_name, loading_person, material_measured, quality_checked } = req.body;
   const client = await pool.connect();
   try {
@@ -159,9 +160,9 @@ router.post('/:id/dispatch', requireRole(ROLES.DISPATCH, ROLES.ADMIN), validate(
   } finally {
     client.release();
   }
-});
+}));
 
-router.patch('/:id/deliver', requireRole(ROLES.DISPATCH, ROLES.ADMIN), async (req, res) => {
+router.patch('/:id/deliver', requireRole(ROLES.DISPATCH, ROLES.ADMIN), asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `UPDATE sales_orders SET status = 'DELIVERED', delivered_at = now()
      WHERE id = $1 AND status = 'DISPATCHED' RETURNING *`,
@@ -169,6 +170,6 @@ router.patch('/:id/deliver', requireRole(ROLES.DISPATCH, ROLES.ADMIN), async (re
   );
   if (!rows.length) return res.status(400).json({ error: 'Sales order must be Dispatched first' });
   res.json(rows[0]);
-});
+}));
 
 export default router;

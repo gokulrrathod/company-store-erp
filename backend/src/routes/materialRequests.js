@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { materialRequestSchema, materialRequestStatusSchema } from '../validation/schemas.js';
 import { ROLES } from '../config/auth.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -17,16 +18,16 @@ async function nextRequisitionNumber(client) {
   return `MR-${year}-${String(lastSeq + 1).padStart(4, '0')}`;
 }
 
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT r.*, i.name AS item_name, i.code AS item_code
      FROM material_requests r JOIN items i ON i.id = r.item_id
      ORDER BY r.created_at DESC`
   );
   res.json(rows);
-});
+}));
 
-router.post('/', validate(materialRequestSchema), async (req, res) => {
+router.post('/', validate(materialRequestSchema), asyncHandler(async (req, res) => {
   const { department, item_id, requested_by, quantity_requested, purpose, remarks } = req.body;
   const client = await pool.connect();
   try {
@@ -45,9 +46,9 @@ router.post('/', validate(materialRequestSchema), async (req, res) => {
   } finally {
     client.release();
   }
-});
+}));
 
-router.patch('/:id/status', requireRole(ROLES.STORE_MANAGER, ROLES.ADMIN), validate(materialRequestStatusSchema), async (req, res) => {
+router.patch('/:id/status', requireRole(ROLES.STORE_MANAGER, ROLES.ADMIN), validate(materialRequestStatusSchema), asyncHandler(async (req, res) => {
   const { status } = req.body;
 
   const client = await pool.connect();
@@ -97,6 +98,6 @@ router.patch('/:id/status', requireRole(ROLES.STORE_MANAGER, ROLES.ADMIN), valid
   } finally {
     client.release();
   }
-});
+}));
 
 export default router;

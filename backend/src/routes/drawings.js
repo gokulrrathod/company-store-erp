@@ -5,6 +5,7 @@ import { validate } from '../middleware/validate.js';
 import { drawingSchema, checklistSchema, bomLineSchema, ecnSchema, ecnApprovalSchema } from '../validation/schemas.js';
 import { CHECKLIST_ITEMS } from '../config/designChecklist.js';
 import { ROLES } from '../config/auth.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -20,7 +21,7 @@ async function nextNumber(client, table, column, prefix) {
 // only sees Released drawings/BOMs (Requirements-Design.md §11 AC5)
 const DESIGN_TEAM_ROLES = [ROLES.DESIGN_ENGINEER, ROLES.CHECKER, ROLES.DESIGN_HEAD, ROLES.ADMIN];
 
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const restricted = !DESIGN_TEAM_ROLES.includes(req.user.role);
   const { rows } = await pool.query(
     restricted
@@ -28,9 +29,9 @@ router.get('/', async (req, res) => {
       : `SELECT * FROM drawings ORDER BY created_at DESC`
   );
   res.json(rows);
-});
+}));
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', asyncHandler(async (req, res) => {
   const restricted = !DESIGN_TEAM_ROLES.includes(req.user.role);
   const { rows } = await pool.query(`SELECT * FROM drawings WHERE id = $1`, [req.params.id]);
   if (!rows.length) return res.status(404).json({ error: 'Drawing not found' });
@@ -39,9 +40,9 @@ router.get('/:id', async (req, res) => {
   const { rows: bomLines } = await pool.query(`SELECT * FROM bom_lines WHERE drawing_id = $1 ORDER BY item_no`, [req.params.id]);
   const { rows: ecns } = await pool.query(`SELECT * FROM engineering_change_notices WHERE drawing_id = $1 ORDER BY created_at DESC`, [req.params.id]);
   res.json({ ...rows[0], bom_lines: bomLines, ecns });
-});
+}));
 
-router.post('/', requireRole(ROLES.DESIGN_ENGINEER, ROLES.ADMIN), validate(drawingSchema), async (req, res, next) => {
+router.post('/', requireRole(ROLES.DESIGN_ENGINEER, ROLES.ADMIN), validate(drawingSchema), asyncHandler(async (req, res, next) => {
   const { drawing_number, drawing_title, project_reference, equipment_name, scale, material, weight, requires_customer_approval, checker, design_head } = req.body;
   try {
     const { rows } = await pool.query(
@@ -57,10 +58,10 @@ router.post('/', requireRole(ROLES.DESIGN_ENGINEER, ROLES.ADMIN), validate(drawi
     }
     next(err);
   }
-});
+}));
 
 // BOM lines can be added while the drawing is still editable (before release)
-router.post('/:id/bom-lines', requireRole(ROLES.DESIGN_ENGINEER, ROLES.ADMIN), validate(bomLineSchema), async (req, res) => {
+router.post('/:id/bom-lines', requireRole(ROLES.DESIGN_ENGINEER, ROLES.ADMIN), validate(bomLineSchema), asyncHandler(async (req, res) => {
   const { rows: drawingRows } = await pool.query(`SELECT status FROM drawings WHERE id = $1`, [req.params.id]);
   if (!drawingRows.length) return res.status(404).json({ error: 'Drawing not found' });
   if (drawingRows[0].status === 'RELEASED') return res.status(400).json({ error: 'Cannot edit BOM on a released drawing' });
@@ -72,10 +73,10 @@ router.post('/:id/bom-lines', requireRole(ROLES.DESIGN_ENGINEER, ROLES.ADMIN), v
     [req.params.id, item_no, part_number || null, description, material || null, quantity, unit || 'pcs', weight ?? null]
   );
   res.status(201).json(rows[0]);
-});
+}));
 
 // Design Engineer submits for checking — Draft/Rework -> Under Checking
-router.patch('/:id/submit-for-checking', requireRole(ROLES.DESIGN_ENGINEER, ROLES.ADMIN), async (req, res) => {
+router.patch('/:id/submit-for-checking', requireRole(ROLES.DESIGN_ENGINEER, ROLES.ADMIN), asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `UPDATE drawings SET status = 'UNDER_CHECKING'
      WHERE id = $1 AND status IN ('DRAFT', 'REWORK') RETURNING *`,
@@ -83,11 +84,11 @@ router.patch('/:id/submit-for-checking', requireRole(ROLES.DESIGN_ENGINEER, ROLE
   );
   if (!rows.length) return res.status(400).json({ error: 'Drawing not found or not in a submittable state' });
   res.json(rows[0]);
-});
+}));
 
 // Checker must complete all 13 checklist items before approving; partial completion only allows Rework
 // (Requirements-Design.md §11 AC3)
-router.patch('/:id/checklist', requireRole(ROLES.CHECKER, ROLES.ADMIN), validate(checklistSchema), async (req, res) => {
+router.patch('/:id/checklist', requireRole(ROLES.CHECKER, ROLES.ADMIN), validate(checklistSchema), asyncHandler(async (req, res) => {
   const { checklist, checker_remarks, decision } = req.body;
   const allChecked = CHECKLIST_ITEMS.every((item) => checklist[item.key] === true);
   if (decision === 'APPROVE' && !allChecked) {
@@ -101,10 +102,10 @@ router.patch('/:id/checklist', requireRole(ROLES.CHECKER, ROLES.ADMIN), validate
   );
   if (!rows.length) return res.status(400).json({ error: 'Drawing not found or not under checking' });
   res.json(rows[0]);
-});
+}));
 
 // Design Head approves — routes to Customer Approval if required, otherwise ready for release directly
-router.patch('/:id/design-head-approve', requireRole(ROLES.DESIGN_HEAD, ROLES.ADMIN), async (req, res) => {
+router.patch('/:id/design-head-approve', requireRole(ROLES.DESIGN_HEAD, ROLES.ADMIN), asyncHandler(async (req, res) => {
   const { rows: drawingRows } = await pool.query(`SELECT * FROM drawings WHERE id = $1`, [req.params.id]);
   if (!drawingRows.length) return res.status(404).json({ error: 'Drawing not found' });
   const drawing = drawingRows[0];
@@ -116,10 +117,10 @@ router.patch('/:id/design-head-approve', requireRole(ROLES.DESIGN_HEAD, ROLES.AD
     [newStatus, req.user.name, req.params.id]
   );
   res.json(rows[0]);
-});
+}));
 
 // Records customer sign-off (no customer portal in this POC — Design Head records it on the customer's behalf)
-router.patch('/:id/customer-approve', requireRole(ROLES.DESIGN_HEAD, ROLES.ADMIN), async (req, res) => {
+router.patch('/:id/customer-approve', requireRole(ROLES.DESIGN_HEAD, ROLES.ADMIN), asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `UPDATE drawings SET status = 'CUSTOMER_APPROVED', customer_approved_by = $1, customer_approved_at = now()
      WHERE id = $2 AND status = 'AWAITING_CUSTOMER_APPROVAL' RETURNING *`,
@@ -127,10 +128,10 @@ router.patch('/:id/customer-approve', requireRole(ROLES.DESIGN_HEAD, ROLES.ADMIN
   );
   if (!rows.length) return res.status(400).json({ error: 'Drawing is not awaiting customer approval' });
   res.json(rows[0]);
-});
+}));
 
 // Blocks release while Customer Approval is still pending, when required (Requirements-Design.md §11 AC4)
-router.patch('/:id/release', requireRole(ROLES.DESIGN_HEAD, ROLES.ADMIN), async (req, res) => {
+router.patch('/:id/release', requireRole(ROLES.DESIGN_HEAD, ROLES.ADMIN), asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `UPDATE drawings SET status = 'RELEASED'
      WHERE id = $1 AND status IN ('DESIGN_HEAD_APPROVED', 'CUSTOMER_APPROVED') RETURNING *`,
@@ -138,10 +139,10 @@ router.patch('/:id/release', requireRole(ROLES.DESIGN_HEAD, ROLES.ADMIN), async 
   );
   if (!rows.length) return res.status(400).json({ error: 'Drawing is not ready for release' });
   res.json(rows[0]);
-});
+}));
 
 // ECN — can only be raised against an already-released drawing; approving creates a new revision (append-only)
-router.post('/:id/ecns', requireRole(ROLES.DESIGN_HEAD, ROLES.ADMIN), validate(ecnSchema), async (req, res) => {
+router.post('/:id/ecns', requireRole(ROLES.DESIGN_HEAD, ROLES.ADMIN), validate(ecnSchema), asyncHandler(async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -164,9 +165,9 @@ router.post('/:id/ecns', requireRole(ROLES.DESIGN_HEAD, ROLES.ADMIN), validate(e
   } finally {
     client.release();
   }
-});
+}));
 
-router.patch('/:id/ecns/:ecnId/approve', requireRole(ROLES.DESIGN_HEAD, ROLES.ADMIN), validate(ecnApprovalSchema), async (req, res) => {
+router.patch('/:id/ecns/:ecnId/approve', requireRole(ROLES.DESIGN_HEAD, ROLES.ADMIN), validate(ecnApprovalSchema), asyncHandler(async (req, res) => {
   const { status } = req.body;
   const client = await pool.connect();
   try {
@@ -189,6 +190,6 @@ router.patch('/:id/ecns/:ecnId/approve', requireRole(ROLES.DESIGN_HEAD, ROLES.AD
   } finally {
     client.release();
   }
-});
+}));
 
 export default router;

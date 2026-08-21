@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { rejectedMaterialSchema } from '../validation/schemas.js';
 import { ROLES } from '../config/auth.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -17,7 +18,7 @@ async function nextRejectionNumber(client) {
   return `REJ-${year}-${String(lastSeq + 1).padStart(4, '0')}`;
 }
 
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT r.*, i.name AS item_name, i.code AS item_code, s.name AS supplier_name
      FROM rejected_materials r
@@ -26,9 +27,9 @@ router.get('/', async (req, res) => {
      ORDER BY r.created_at DESC`
   );
   res.json(rows);
-});
+}));
 
-router.post('/', requireRole(ROLES.QUALITY, ROLES.STORE_MANAGER, ROLES.ADMIN), validate(rejectedMaterialSchema), async (req, res) => {
+router.post('/', requireRole(ROLES.QUALITY, ROLES.STORE_MANAGER, ROLES.ADMIN), validate(rejectedMaterialSchema), asyncHandler(async (req, res) => {
   const { supplier_id, item_id, batch_number, quantity, reason, qc_remarks, action_taken, disposal_date } = req.body;
   const client = await pool.connect();
   try {
@@ -48,6 +49,6 @@ router.post('/', requireRole(ROLES.QUALITY, ROLES.STORE_MANAGER, ROLES.ADMIN), v
   } finally {
     client.release();
   }
-});
+}));
 
 export default router;

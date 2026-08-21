@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { purchaseInvoiceSchema, salesInvoiceSchema, invoicePaymentSchema } from '../validation/schemas.js';
 import { ROLES } from '../config/auth.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -19,7 +20,7 @@ async function withBalance(rows) {
   return rows.map((r) => ({ ...r, amount_paid: paidMap[r.id] || 0, balance: Number(r.total_amount) - (paidMap[r.id] || 0) }));
 }
 
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT i.*, po.po_number, so.so_number
      FROM invoices i
@@ -28,9 +29,9 @@ router.get('/', async (req, res) => {
      ORDER BY i.created_at DESC`
   );
   res.json(await withBalance(rows));
-});
+}));
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT i.*, po.po_number, so.so_number
      FROM invoices i
@@ -43,18 +44,18 @@ router.get('/:id', async (req, res) => {
   const [withBal] = await withBalance(rows);
   const { rows: payments } = await pool.query(`SELECT * FROM payments WHERE invoice_id = $1 ORDER BY created_at DESC`, [req.params.id]);
   res.json({ ...withBal, payments });
-});
+}));
 
 // Eligible GRNs for a given PO: APPROVED status only (three-way match gate).
-router.get('/eligible-grns/:poId', async (req, res) => {
+router.get('/eligible-grns/:poId', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT id, grn_number, status FROM material_receipts WHERE po_id = $1 AND status = 'APPROVED' ORDER BY created_at DESC`,
     [req.params.poId]
   );
   res.json(rows);
-});
+}));
 
-router.post('/purchase', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(purchaseInvoiceSchema), async (req, res) => {
+router.post('/purchase', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(purchaseInvoiceSchema), asyncHandler(async (req, res) => {
   const { invoice_number, party_name, gstin, purchase_order_id, material_receipt_id, taxable_amount, gst_percent, due_date } = req.body;
   const client = await pool.connect();
   try {
@@ -86,9 +87,9 @@ router.post('/purchase', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(purc
   } finally {
     client.release();
   }
-});
+}));
 
-router.post('/sales', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(salesInvoiceSchema), async (req, res) => {
+router.post('/sales', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(salesInvoiceSchema), asyncHandler(async (req, res) => {
   const { invoice_number, sales_order_id, gstin, taxable_amount, gst_percent, due_date } = req.body;
   const client = await pool.connect();
   try {
@@ -120,9 +121,9 @@ router.post('/sales', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(salesIn
   } finally {
     client.release();
   }
-});
+}));
 
-router.post('/:id/payments', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(invoicePaymentSchema), async (req, res) => {
+router.post('/:id/payments', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(invoicePaymentSchema), asyncHandler(async (req, res) => {
   const { payment_date, mode, reference_number, amount_paid } = req.body;
   const client = await pool.connect();
   try {
@@ -154,6 +155,6 @@ router.post('/:id/payments', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(
   } finally {
     client.release();
   }
-});
+}));
 
 export default router;

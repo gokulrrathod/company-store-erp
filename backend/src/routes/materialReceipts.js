@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { materialReceiptSchema, inspectLineSchema } from '../validation/schemas.js';
 import { ROLES } from '../config/auth.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -17,7 +18,7 @@ async function nextGrnNumber(client) {
   return `GRN-${year}-${String(lastSeq + 1).padStart(4, '0')}`;
 }
 
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT r.*, s.name AS supplier_name, po.po_number
      FROM material_receipts r
@@ -26,9 +27,9 @@ router.get('/', async (req, res) => {
      ORDER BY r.created_at DESC`
   );
   res.json(rows);
-});
+}));
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', asyncHandler(async (req, res) => {
   const { rows: recRows } = await pool.query(
     `SELECT r.*, s.name AS supplier_name, po.po_number
      FROM material_receipts r
@@ -45,10 +46,10 @@ router.get('/:id', async (req, res) => {
     [req.params.id]
   );
   res.json({ ...recRows[0], lines });
-});
+}));
 
 // Step 1: Store Executive records incoming material (Material Receipt)
-router.post('/', requireRole(ROLES.STORE_EXECUTIVE, ROLES.STORE_MANAGER, ROLES.ADMIN), validate(materialReceiptSchema), async (req, res) => {
+router.post('/', requireRole(ROLES.STORE_EXECUTIVE, ROLES.STORE_MANAGER, ROLES.ADMIN), validate(materialReceiptSchema), asyncHandler(async (req, res) => {
   const { po_id, supplier_id, invoice_number, lines } = req.body;
   const client = await pool.connect();
   try {
@@ -75,10 +76,10 @@ router.post('/', requireRole(ROLES.STORE_EXECUTIVE, ROLES.STORE_MANAGER, ROLES.A
   } finally {
     client.release();
   }
-});
+}));
 
 // Step 2: Quality inspects each line (accept/partially accept/reject)
-router.patch('/:id/lines/:lineId/inspect', requireRole(ROLES.QUALITY, ROLES.ADMIN), validate(inspectLineSchema), async (req, res) => {
+router.patch('/:id/lines/:lineId/inspect', requireRole(ROLES.QUALITY, ROLES.ADMIN), validate(inspectLineSchema), asyncHandler(async (req, res) => {
   const { inspection_status, quality_remarks, damage_details } = req.body;
   const { rows } = await pool.query(
     `UPDATE receipt_lines
@@ -94,10 +95,10 @@ router.patch('/:id/lines/:lineId/inspect', requireRole(ROLES.QUALITY, ROLES.ADMI
     [req.params.id]
   );
   res.json(rows[0]);
-});
+}));
 
 // Step 3: Store Manager approves -> inventory updated, PO status updated
-router.post('/:id/approve', requireRole(ROLES.STORE_MANAGER, ROLES.ADMIN), async (req, res) => {
+router.post('/:id/approve', requireRole(ROLES.STORE_MANAGER, ROLES.ADMIN), asyncHandler(async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -151,6 +152,6 @@ router.post('/:id/approve', requireRole(ROLES.STORE_MANAGER, ROLES.ADMIN), async
   } finally {
     client.release();
   }
-});
+}));
 
 export default router;

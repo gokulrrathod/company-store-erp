@@ -4,20 +4,21 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { purchaseOrderSchema } from '../validation/schemas.js';
 import { ROLES } from '../config/auth.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
 router.use(requireAuth);
 
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT po.*, s.name AS supplier_name
      FROM purchase_orders po JOIN suppliers s ON s.id = po.supplier_id
      ORDER BY po.created_at DESC`
   );
   res.json(rows);
-});
+}));
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', asyncHandler(async (req, res) => {
   const { rows: poRows } = await pool.query(
     `SELECT po.*, s.name AS supplier_name FROM purchase_orders po
      JOIN suppliers s ON s.id = po.supplier_id WHERE po.id = $1`,
@@ -31,11 +32,11 @@ router.get('/:id', async (req, res) => {
     [req.params.id]
   );
   res.json({ ...poRows[0], lines });
-});
+}));
 
 // Budget must be verified before/at PO creation; exceeding it escalates to Finance rather than blocking
 // (Requirements-Purchase.md §1 Budget rule, §11 AC2)
-router.post('/', requireRole(ROLES.PURCHASE, ROLES.ADMIN), validate(purchaseOrderSchema), async (req, res) => {
+router.post('/', requireRole(ROLES.PURCHASE, ROLES.ADMIN), validate(purchaseOrderSchema), asyncHandler(async (req, res) => {
   const { po_number, supplier_id, department, lines } = req.body;
   const client = await pool.connect();
   try {
@@ -86,10 +87,10 @@ router.post('/', requireRole(ROLES.PURCHASE, ROLES.ADMIN), validate(purchaseOrde
   } finally {
     client.release();
   }
-});
+}));
 
 // Finance Head approves a PO that exceeded its department's budget
-router.patch('/:id/finance-approve', requireRole(ROLES.FINANCE, ROLES.ADMIN), async (req, res) => {
+router.patch('/:id/finance-approve', requireRole(ROLES.FINANCE, ROLES.ADMIN), asyncHandler(async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -114,6 +115,6 @@ router.patch('/:id/finance-approve', requireRole(ROLES.FINANCE, ROLES.ADMIN), as
   } finally {
     client.release();
   }
-});
+}));
 
 export default router;

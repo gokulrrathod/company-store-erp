@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { itemCreateSchema, itemUpdateSchema } from '../validation/schemas.js';
 import { ROLES } from '../config/auth.js';
+import { asyncHandler } from '../middleware/asyncHandler.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -16,16 +17,16 @@ const SELECT_ITEM_FIELDS = `
   (i.quantity * i.unit_rate) AS valuation
 `;
 
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT ${SELECT_ITEM_FIELDS}
      FROM items i LEFT JOIN categories c ON c.id = i.category_id
      ORDER BY i.name`
   );
   res.json(rows);
-});
+}));
 
-router.get('/low-stock', async (req, res) => {
+router.get('/low-stock', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT ${SELECT_ITEM_FIELDS}
      FROM items i LEFT JOIN categories c ON c.id = i.category_id
@@ -33,18 +34,18 @@ router.get('/low-stock', async (req, res) => {
      ORDER BY i.quantity ASC`
   );
   res.json(rows);
-});
+}));
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
     `SELECT ${SELECT_ITEM_FIELDS} FROM items i LEFT JOIN categories c ON c.id = i.category_id WHERE i.id = $1`,
     [req.params.id]
   );
   if (!rows.length) return res.status(404).json({ error: 'Item not found' });
   res.json(rows[0]);
-});
+}));
 
-router.post('/', requireRole(ROLES.STORE_MANAGER, ROLES.STORE_EXECUTIVE, ROLES.ADMIN), validate(itemCreateSchema), async (req, res, next) => {
+router.post('/', requireRole(ROLES.STORE_MANAGER, ROLES.STORE_EXECUTIVE, ROLES.ADMIN), validate(itemCreateSchema), asyncHandler(async (req, res, next) => {
   const {
     code, name, category_id, unit, quantity, reorder_level,
     minimum_stock, maximum_stock, warehouse, rack_number, bin_number, storage_location, unit_rate,
@@ -64,9 +65,9 @@ router.post('/', requireRole(ROLES.STORE_MANAGER, ROLES.STORE_EXECUTIVE, ROLES.A
     }
     next(err);
   }
-});
+}));
 
-router.put('/:id', requireRole(ROLES.STORE_MANAGER, ROLES.STORE_EXECUTIVE, ROLES.ADMIN), validate(itemUpdateSchema), async (req, res, next) => {
+router.put('/:id', requireRole(ROLES.STORE_MANAGER, ROLES.STORE_EXECUTIVE, ROLES.ADMIN), validate(itemUpdateSchema), asyncHandler(async (req, res, next) => {
   const {
     code, name, category_id, unit, reorder_level,
     minimum_stock, maximum_stock, warehouse, rack_number, bin_number, storage_location, unit_rate,
@@ -89,6 +90,6 @@ router.put('/:id', requireRole(ROLES.STORE_MANAGER, ROLES.STORE_EXECUTIVE, ROLES
     }
     next(err);
   }
-});
+}));
 
 export default router;
