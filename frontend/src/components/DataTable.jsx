@@ -12,9 +12,12 @@ const DEFAULT_COL_DEF = {
   filter: false,
   suppressMenu: true,
   resizable: true,
-  flex: 1,
   minWidth: 110,
 };
+
+// Columns size to fit their own content first, then any leftover grid width
+// is distributed proportionally so there's no dead space on the right.
+const AUTO_SIZE_STRATEGY = { type: 'fitGridWidth', defaultMinWidth: 110 };
 
 const ROW_HEIGHT = 34;
 const HEADER_HEIGHT = 36;
@@ -25,7 +28,8 @@ export default function DataTable({
   columnDefs,
   pagination = true,
   pageSize = 50,
-  minHeight = 520,
+  minHeight = 320,
+  maxHeight = 640,
   emptyMessage = 'No records found.',
   onRowClicked,
   getRowId,
@@ -52,13 +56,12 @@ export default function DataTable({
     );
   }
 
-  // Grid always sizes to exactly fit its own rows (never its own inner
-  // scrollbar — the page scrolls for overflow instead), but never shrinks
-  // below `minHeight` either, so a short list still fills the screen
-  // instead of leaving a tiny cramped table with dead space beneath it.
+  // Grid shrinks to fit small datasets (never below minHeight) and grows
+  // with more rows, but is capped at maxHeight — beyond that, the grid gets
+  // its own internal scrollbar instead of pushing the whole page to scroll.
   const visibleRows = pagination ? Math.min(rowData.length, pageSize) : rowData.length;
   const contentHeight = HEADER_HEIGHT + visibleRows * ROW_HEIGHT + (pagination ? PAGER_HEIGHT : 0) + 4;
-  const height = Math.max(minHeight, contentHeight);
+  const height = Math.min(maxHeight, Math.max(minHeight, contentHeight));
 
   return (
     <Box
@@ -83,6 +86,7 @@ export default function DataTable({
         rowData={rowData}
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}
+        autoSizeStrategy={AUTO_SIZE_STRATEGY}
         pagination={pagination}
         paginationPageSize={pageSize}
         paginationPageSizeSelector={[20, 50, 100, 200]}
