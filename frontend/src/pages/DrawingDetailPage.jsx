@@ -263,6 +263,15 @@ export default function DrawingDetailPage() {
     { field: 'unit', headerName: 'Unit', minWidth: 80 },
   ];
 
+  const revisionColumnDefs = [
+    { field: 'revision_number', headerName: 'Revision', minWidth: 100 },
+    { field: 'revision_date', headerName: 'Date', minWidth: 110, valueFormatter: (p) => new Date(p.value).toLocaleDateString() },
+    { field: 'revision_description', headerName: 'Description', minWidth: 220, valueFormatter: (p) => p.value || '—' },
+    { field: 'prepared_by', headerName: 'Prepared By', minWidth: 140, valueFormatter: (p) => p.value || '—' },
+    { field: 'checked_by', headerName: 'Checked By', minWidth: 140, valueFormatter: (p) => p.value || '—' },
+    { field: 'approved_by', headerName: 'Approved By', minWidth: 140, valueFormatter: (p) => p.value || '—' },
+  ];
+
   const ecnColumnDefs = [
     { field: 'ecn_number', headerName: 'ECN No.', minWidth: 130 },
     { field: 'reason_for_change', headerName: 'Reason', minWidth: 220 },
@@ -482,6 +491,14 @@ export default function DrawingDetailPage() {
 
       <Section title="Attachments">
         <AttachmentsPanel entityType="drawing" entityId={drawing.id} canUpload={isEngineer && drawing.status !== 'RELEASED'} />
+      </Section>
+
+      <Section title="Revision History">
+        <DataTable
+          rowData={drawing.revisions || []} columnDefs={revisionColumnDefs} pagination={false}
+          height={Math.max(160, (drawing.revisions?.length || 0) * 56 + 60)} getRowId={(p) => String(p.data.id)}
+          emptyMessage="No revision history recorded yet."
+        />
       </Section>
 
       <Divider sx={{ my: 3 }} />

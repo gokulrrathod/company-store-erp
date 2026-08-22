@@ -185,6 +185,32 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_design_calculations_drawing ON design_calculations(drawing_id);
     `,
   },
+  {
+    name: '009_drawing_revisions',
+    sql: `
+      CREATE TABLE IF NOT EXISTS drawing_revisions (
+        id SERIAL PRIMARY KEY,
+        drawing_id INTEGER NOT NULL REFERENCES drawings(id),
+        revision_number VARCHAR(20) NOT NULL,
+        revision_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        revision_description TEXT,
+        prepared_by VARCHAR(100),
+        checked_by VARCHAR(100),
+        approved_by VARCHAR(100),
+        ecn_id INTEGER REFERENCES engineering_change_notices(id),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_drawing_revisions_drawing ON drawing_revisions(drawing_id);
+
+      INSERT INTO drawing_revisions (drawing_id, revision_number, revision_date, revision_description, prepared_by, checked_by, approved_by)
+      SELECT id, revision, created_at::date, 'Backfilled - existing revision at time of document-control rollout',
+             prepared_by,
+             CASE WHEN status NOT IN ('DRAFT', 'UNDER_CHECKING', 'REWORK') THEN checker ELSE NULL END,
+             CASE WHEN status IN ('DESIGN_HEAD_APPROVED', 'AWAITING_CUSTOMER_APPROVAL', 'CUSTOMER_APPROVED', 'RELEASED') THEN design_head ELSE NULL END
+      FROM drawings
+      WHERE NOT EXISTS (SELECT 1 FROM drawing_revisions WHERE drawing_revisions.drawing_id = drawings.id);
+    `,
+  },
 ];
 
 async function ensureMigrationsTable(client) {

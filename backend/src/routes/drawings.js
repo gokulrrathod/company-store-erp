@@ -50,7 +50,11 @@ router.get('/:id', asyncHandler(async (req, res) => {
     `SELECT * FROM design_calculations WHERE drawing_id = $1 ORDER BY created_at DESC`,
     [req.params.id]
   );
-  res.json({ ...rows[0], bom_lines: bomLines, ecns, input_sheet: inputSheetRows[0] || null, calculations });
+  const { rows: revisions } = await pool.query(
+    `SELECT * FROM drawing_revisions WHERE drawing_id = $1 ORDER BY id`,
+    [req.params.id]
+  );
+  res.json({ ...rows[0], bom_lines: bomLines, ecns, input_sheet: inputSheetRows[0] || null, calculations, revisions });
 }));
 
 // Step 3 of the Design pipeline (Requirements-Design.md §3) - the documented basis
@@ -151,19 +155,30 @@ router.post('/:id/calculations', requireRole(ROLES.DESIGN_ENGINEER, ROLES.ADMIN)
 
 router.post('/', requireRole(ROLES.DESIGN_ENGINEER, ROLES.ADMIN), validate(drawingSchema), asyncHandler(async (req, res, next) => {
   const { drawing_number, drawing_title, project_reference, equipment_name, scale, material, weight, requires_customer_approval, checker, design_head } = req.body;
+  const client = await pool.connect();
   try {
-    const { rows } = await pool.query(
+    await client.query('BEGIN');
+    const { rows } = await client.query(
       `INSERT INTO drawings (drawing_number, drawing_title, project_reference, equipment_name, scale, material, weight, requires_customer_approval, prepared_by, checker, design_head)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
       [drawing_number, drawing_title, project_reference || null, equipment_name, scale || null, material || null,
         weight ?? null, requires_customer_approval ?? false, req.user.name, checker || null, design_head || null]
     );
+    await client.query(
+      `INSERT INTO drawing_revisions (drawing_id, revision_number, revision_description, prepared_by)
+       VALUES ($1, $2, $3, $4)`,
+      [rows[0].id, rows[0].revision, 'Initial release', req.user.name]
+    );
+    await client.query('COMMIT');
     res.status(201).json(rows[0]);
   } catch (err) {
+    await client.query('ROLLBACK');
     if (err.code === '23505') {
       return res.status(400).json({ error: 'Drawing number already exists', fieldErrors: { drawing_number: 'Already in use' } });
     }
     next(err);
+  } finally {
+    client.release();
   }
 }));
 
@@ -208,6 +223,13 @@ router.patch('/:id/checklist', requireRole(ROLES.CHECKER, ROLES.ADMIN), validate
     [JSON.stringify(checklist), checker_remarks || null, req.user.name, newStatus, req.params.id]
   );
   if (!rows.length) return res.status(400).json({ error: 'Drawing not found or not under checking' });
+  if (decision === 'APPROVE') {
+    await pool.query(
+      `UPDATE drawing_revisions SET checked_by = $1
+       WHERE id = (SELECT id FROM drawing_revisions WHERE drawing_id = $2 ORDER BY id DESC LIMIT 1)`,
+      [req.user.name, req.params.id]
+    );
+  }
   res.json(rows[0]);
 }));
 
@@ -222,6 +244,11 @@ router.patch('/:id/design-head-approve', requireRole(ROLES.DESIGN_HEAD, ROLES.AD
   const { rows } = await pool.query(
     `UPDATE drawings SET status = $1, design_head = $2 WHERE id = $3 RETURNING *`,
     [newStatus, req.user.name, req.params.id]
+  );
+  await pool.query(
+    `UPDATE drawing_revisions SET approved_by = $1
+     WHERE id = (SELECT id FROM drawing_revisions WHERE drawing_id = $2 ORDER BY id DESC LIMIT 1)`,
+    [req.user.name, req.params.id]
   );
   res.json(rows[0]);
 }));
@@ -288,6 +315,11 @@ router.patch('/:id/ecns/:ecnId/approve', requireRole(ROLES.DESIGN_HEAD, ROLES.AD
 
     if (status === 'APPROVED') {
       await client.query(`UPDATE drawings SET revision = $1 WHERE id = $2`, [ecnRows[0].new_revision, req.params.id]);
+      await client.query(
+        `INSERT INTO drawing_revisions (drawing_id, revision_number, revision_description, prepared_by, approved_by, ecn_id)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [req.params.id, ecnRows[0].new_revision, ecnRows[0].reason_for_change, ecnRows[0].requested_by, req.user.name, ecnRows[0].id]
+      );
     }
     await client.query('COMMIT');
     res.json(ecnRows[0]);

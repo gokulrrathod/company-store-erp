@@ -391,6 +391,23 @@ CREATE TABLE IF NOT EXISTS engineering_change_notices (
 CREATE INDEX IF NOT EXISTS idx_bom_lines_drawing ON bom_lines(drawing_id);
 CREATE INDEX IF NOT EXISTS idx_ecns_drawing ON engineering_change_notices(drawing_id);
 
+-- Document Control (§5): one row per revision, append-only - a new ECN creates a
+-- new row here rather than overwriting drawings.revision's history
+CREATE TABLE IF NOT EXISTS drawing_revisions (
+    id SERIAL PRIMARY KEY,
+    drawing_id INTEGER NOT NULL REFERENCES drawings(id),
+    revision_number VARCHAR(20) NOT NULL,
+    revision_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    revision_description TEXT,
+    prepared_by VARCHAR(100),
+    checked_by VARCHAR(100),
+    approved_by VARCHAR(100),
+    ecn_id INTEGER REFERENCES engineering_change_notices(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_drawing_revisions_drawing ON drawing_revisions(drawing_id);
+
 -- =====================================================================
 -- PRODUCTION DEPARTMENT (per Requirements-Production.md / 7 Production Department SOP)
 -- MRS reuses the canonical material_requests entity (Department = 'Production') — no separate table.
