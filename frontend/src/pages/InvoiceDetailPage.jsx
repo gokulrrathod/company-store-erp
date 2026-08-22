@@ -49,6 +49,21 @@ export default function InvoiceDetailPage() {
 
   const canPay = ['ACCOUNTS', 'ADMIN'].includes(user?.role);
 
+  const downloadVoucher = async (paymentId) => {
+    setActionError('');
+    try {
+      const res = await api.get(`/invoices/${id}/payments/${paymentId}/voucher-pdf`, { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `PV-${String(paymentId).padStart(6, '0')}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setActionError('Failed to download voucher');
+    }
+  };
+
   const submitPayment = async (values) => {
     setActionError('');
     try {
@@ -109,9 +124,12 @@ export default function InvoiceDetailPage() {
         {invoice.payments.map((p, idx) => (
           <Box key={p.id}>
             {idx > 0 && <Divider sx={{ my: 1.5 }} />}
-            <Stack direction="row" justifyContent="space-between">
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
               <Typography variant="body2">{p.mode} {p.reference_number ? `· ${p.reference_number}` : ''} · {p.payment_date?.slice(0, 10)}</Typography>
-              <Typography variant="body2" fontWeight={600}>₹ {Number(p.amount_paid).toLocaleString('en-IN')}</Typography>
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <Typography variant="body2" fontWeight={600}>₹ {Number(p.amount_paid).toLocaleString('en-IN')}</Typography>
+                <Button size="small" onClick={() => downloadVoucher(p.id)}>Voucher (PDF)</Button>
+              </Stack>
             </Stack>
           </Box>
         ))}

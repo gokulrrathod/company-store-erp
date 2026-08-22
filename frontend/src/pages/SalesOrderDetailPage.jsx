@@ -66,6 +66,21 @@ export default function SalesOrderDetailPage() {
     }
   };
 
+  const downloadDeliveryChallan = async () => {
+    setActionError('');
+    try {
+      const res = await api.get(`/sales-orders/${id}/delivery-challan-pdf`, { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${order.dc_number}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setActionError('Failed to download Delivery Challan');
+    }
+  };
+
   const markReadyForDispatch = async () => {
     setActionError('');
     try {
@@ -219,6 +234,12 @@ export default function SalesOrderDetailPage() {
 
       {order.status === 'DELIVERED' && (
         <Alert severity="success" sx={{ mt: 2 }}>Delivered on {new Date(order.delivered_at).toLocaleString()}.</Alert>
+      )}
+
+      {order.dispatched_at && (
+        <Section title="Delivery Challan">
+          <Button variant="outlined" onClick={downloadDeliveryChallan}>Download Delivery Challan (PDF)</Button>
+        </Section>
       )}
 
       <Divider sx={{ my: 3 }} />

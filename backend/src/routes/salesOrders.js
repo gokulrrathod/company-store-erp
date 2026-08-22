@@ -5,6 +5,7 @@ import { validate } from '../middleware/validate.js';
 import { confirmOrderSchema, productionStatusSchema, dispatchSchema, paymentSchema } from '../validation/schemas.js';
 import { ROLES } from '../config/auth.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+import { streamPdf, pdfTitle, pdfField } from '../utils/pdf.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -170,6 +171,44 @@ router.patch('/:id/deliver', requireRole(ROLES.DISPATCH, ROLES.ADMIN), asyncHand
   );
   if (!rows.length) return res.status(400).json({ error: 'Sales order must be Dispatched first' });
   res.json(rows[0]);
+}));
+
+// Delivery Challan — a real PDF document, not just the dc_number/vehicle fields (Requirements-Sales.md §2)
+// Only available once dispatched, since the vehicle/driver details it prints aren't recorded before then.
+router.get('/:id/delivery-challan-pdf', asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT so.*, e.customer_name, e.mobile_number, e.company_name, e.site_address, e.product_requirement
+     FROM sales_orders so JOIN enquiries e ON e.id = so.enquiry_id WHERE so.id = $1`,
+    [req.params.id]
+  );
+  if (!rows.length) return res.status(404).json({ error: 'Sales order not found' });
+  const so = rows[0];
+  if (!so.dispatched_at) return res.status(400).json({ error: 'Delivery Challan is only available once the order has been dispatched' });
+
+  await streamPdf(res, `${so.dc_number}.pdf`, (doc) => {
+    pdfTitle(doc, 'Delivery Challan');
+    pdfField(doc, 'DC Number', so.dc_number); doc.moveDown(0.4);
+    pdfField(doc, 'Date', new Date(so.dispatched_at).toLocaleDateString()); doc.moveDown(0.4);
+    pdfField(doc, 'Sales Order Number', so.so_number); doc.moveDown(1);
+
+    doc.fontSize(12).font('Helvetica-Bold').text('Customer Details'); doc.moveDown(0.3);
+    pdfField(doc, 'Name', so.customer_name); doc.moveDown(0.2);
+    pdfField(doc, 'Company', so.company_name); doc.moveDown(0.2);
+    pdfField(doc, 'Site Address', so.site_address); doc.moveDown(0.2);
+    pdfField(doc, 'Mobile', so.mobile_number); doc.moveDown(1);
+
+    doc.fontSize(12).font('Helvetica-Bold').text('Material Details'); doc.moveDown(0.3);
+    pdfField(doc, 'Description', so.product_requirement); doc.moveDown(1);
+
+    doc.fontSize(12).font('Helvetica-Bold').text('Dispatch Details'); doc.moveDown(0.3);
+    pdfField(doc, 'Vehicle Number', so.vehicle_number); doc.moveDown(0.2);
+    pdfField(doc, 'Driver Name', so.driver_name); doc.moveDown(0.2);
+    pdfField(doc, 'Loading Person', so.loading_person); doc.moveDown(3);
+
+    doc.fontSize(10).text('Receiver Signature: _______________________');
+    doc.moveDown(1);
+    doc.text('Authorized Signatory: _______________________');
+  });
 }));
 
 export default router;

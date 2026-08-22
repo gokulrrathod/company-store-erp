@@ -5,6 +5,7 @@ import { validate } from '../middleware/validate.js';
 import { purchaseInvoiceSchema, salesInvoiceSchema, invoicePaymentSchema } from '../validation/schemas.js';
 import { ROLES } from '../config/auth.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+import { streamPdf, pdfTitle, pdfField } from '../utils/pdf.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -169,9 +170,9 @@ router.post('/:id/payments', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(
     const balance = Number(invoice.total_amount) - alreadyPaid;
     if (Number(amount_paid) > balance) throw new Error(`Payment amount exceeds outstanding balance of ₹ ${balance.toFixed(2)}`);
 
-    await client.query(
+    const { rows: paymentRows } = await client.query(
       `INSERT INTO payments (invoice_id, payment_date, mode, reference_number, amount_paid, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
       [req.params.id, payment_date || new Date(), mode, reference_number || null, amount_paid, req.user.name]
     );
 
@@ -180,13 +181,48 @@ router.post('/:id/payments', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(
     const { rows } = await client.query(`UPDATE invoices SET payment_status = $1 WHERE id = $2 RETURNING *`, [newStatus, req.params.id]);
 
     await client.query('COMMIT');
-    res.json(rows[0]);
+    res.json({ ...rows[0], payment: paymentRows[0] });
   } catch (err) {
     await client.query('ROLLBACK');
     res.status(400).json({ error: err.message });
   } finally {
     client.release();
   }
+}));
+
+// Payment Voucher — a real PDF document for each recorded payment (Requirements-Accounts.md §2)
+router.get('/:id/payments/:paymentId/voucher-pdf', asyncHandler(async (req, res) => {
+  const { rows: invRows } = await pool.query(`SELECT * FROM invoices WHERE id = $1`, [req.params.id]);
+  if (!invRows.length) return res.status(404).json({ error: 'Invoice not found' });
+  const invoice = invRows[0];
+
+  const { rows: payRows } = await pool.query(
+    `SELECT * FROM payments WHERE id = $1 AND invoice_id = $2`,
+    [req.params.paymentId, req.params.id]
+  );
+  if (!payRows.length) return res.status(404).json({ error: 'Payment not found for this invoice' });
+  const payment = payRows[0];
+
+  const voucherNumber = `PV-${String(payment.id).padStart(6, '0')}`;
+  await streamPdf(res, `${voucherNumber}.pdf`, (doc) => {
+    pdfTitle(doc, invoice.invoice_type === 'PURCHASE' ? 'Payment Voucher' : 'Receipt Voucher');
+    pdfField(doc, 'Voucher Number', voucherNumber); doc.moveDown(0.4);
+    pdfField(doc, 'Date', new Date(payment.payment_date).toLocaleDateString()); doc.moveDown(1);
+
+    doc.fontSize(12).font('Helvetica-Bold').text(invoice.invoice_type === 'PURCHASE' ? 'Paid To' : 'Received From'); doc.moveDown(0.3);
+    pdfField(doc, 'Party Name', invoice.party_name); doc.moveDown(0.2);
+    pdfField(doc, 'GSTIN', invoice.gstin); doc.moveDown(1);
+
+    doc.fontSize(12).font('Helvetica-Bold').text('Payment Details'); doc.moveDown(0.3);
+    pdfField(doc, 'Invoice Number', invoice.invoice_number); doc.moveDown(0.2);
+    pdfField(doc, 'Mode', payment.mode); doc.moveDown(0.2);
+    pdfField(doc, 'Reference / UTR', payment.reference_number); doc.moveDown(0.2);
+    pdfField(doc, 'Amount Paid', `Rs. ${Number(payment.amount_paid).toLocaleString('en-IN')}`); doc.moveDown(3);
+
+    doc.fontSize(10).text('Prepared By: _______________________');
+    doc.moveDown(1);
+    doc.text('Authorized Signatory: _______________________');
+  });
 }));
 
 export default router;
