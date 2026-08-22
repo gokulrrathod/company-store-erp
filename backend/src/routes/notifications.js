@@ -68,6 +68,16 @@ const CHECKS = [
     text: (n) => `${n} PO${n > 1 ? 's' : ''} over budget awaiting your approval`,
   },
   {
+    key: 'po_delivery_delay',
+    roles: [ROLES.PURCHASE, ROLES.ADMIN],
+    path: '/purchase-orders',
+    icon: 'delay',
+    query: `SELECT COUNT(*) AS n FROM purchase_orders
+            WHERE status IN ('OPEN', 'PARTIALLY_RECEIVED', 'AMENDED')
+              AND expected_delivery_date IS NOT NULL AND expected_delivery_date < CURRENT_DATE`,
+    text: (n) => `${n} PO${n > 1 ? 's' : ''} past their expected delivery date`,
+  },
+  {
     key: 'vendor_pending_management_approval',
     roles: [ROLES.MANAGEMENT, ROLES.ADMIN],
     path: '/vendors',

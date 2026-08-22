@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { pool } from '../db/pool.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { purchaseOrderSchema } from '../validation/schemas.js';
+import { purchaseOrderSchema, poAmendSchema } from '../validation/schemas.js';
 import { ROLES } from '../config/auth.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
 
@@ -66,7 +66,7 @@ async function findBudgetForUpdate(client, department, project_id) {
 }
 
 router.post('/', requireRole(ROLES.PURCHASE, ROLES.ADMIN), validate(purchaseOrderSchema), asyncHandler(async (req, res) => {
-  const { supplier_id, department, project_id, lines } = req.body;
+  const { supplier_id, department, project_id, expected_delivery_date, lines } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -102,9 +102,9 @@ router.post('/', requireRole(ROLES.PURCHASE, ROLES.ADMIN), validate(purchaseOrde
     }
 
     const { rows } = await client.query(
-      `INSERT INTO purchase_orders (po_number, supplier_id, department, project_id, total_value, budget_status, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [po_number, supplier_id, department, project_id || null, total_value, budget_status, req.user.name]
+      `INSERT INTO purchase_orders (po_number, supplier_id, department, project_id, expected_delivery_date, total_value, budget_status, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [po_number, supplier_id, department, project_id || null, expected_delivery_date || null, total_value, budget_status, req.user.name]
     );
     const po = rows[0];
     for (const line of lines) {
@@ -158,6 +158,21 @@ router.patch('/:id/finance-approve', requireRole(ROLES.FINANCE, ROLES.ADMIN), as
   } finally {
     client.release();
   }
+}));
+
+// Amend a PO — revises the expected delivery date (or other terms in future) with a required
+// reason; captured in the shared audit trail since purchase_orders already carries the audit trigger.
+// AMENDED is a distinct, visible status rather than a silent field edit (Requirements-Purchase.md §1)
+router.patch('/:id/amend', requireRole(ROLES.PURCHASE, ROLES.ADMIN), validate(poAmendSchema), asyncHandler(async (req, res) => {
+  const { expected_delivery_date, amendment_reason } = req.body;
+  const { rows } = await pool.query(
+    `UPDATE purchase_orders
+     SET status = 'AMENDED', expected_delivery_date = COALESCE($1, expected_delivery_date), amendment_reason = $2
+     WHERE id = $3 AND status IN ('OPEN', 'PARTIALLY_RECEIVED', 'AMENDED') RETURNING *`,
+    [expected_delivery_date || null, amendment_reason, req.params.id]
+  );
+  if (!rows.length) return res.status(400).json({ error: 'Purchase order not found or cannot be amended (already closed)' });
+  res.json(rows[0]);
 }));
 
 export default router;

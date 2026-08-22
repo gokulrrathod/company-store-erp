@@ -365,6 +365,17 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_purchase_orders_project ON purchase_orders(project_id);
     `,
   },
+  {
+    name: '014_po_delivery_tracking',
+    sql: `
+      ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS expected_delivery_date DATE;
+      ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS actual_delivery_date DATE;
+      ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS amendment_reason VARCHAR(500);
+      ALTER TABLE purchase_orders DROP CONSTRAINT IF EXISTS purchase_orders_status_check;
+      ALTER TABLE purchase_orders ADD CONSTRAINT purchase_orders_status_check
+        CHECK (status IN ('OPEN', 'PARTIALLY_RECEIVED', 'CLOSED', 'AMENDED'));
+    `,
+  },
 ];
 
 async function ensureMigrationsTable(client) {

@@ -115,7 +115,10 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
         ('WITHIN_BUDGET', 'PENDING_FINANCE_APPROVAL', 'FINANCE_APPROVED')),
     finance_approved_by VARCHAR(100),
     finance_approved_at TIMESTAMPTZ,
-    status VARCHAR(20) NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'PARTIALLY_RECEIVED', 'CLOSED')),
+    status VARCHAR(20) NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'PARTIALLY_RECEIVED', 'CLOSED', 'AMENDED')),
+    expected_delivery_date DATE,
+    actual_delivery_date DATE,
+    amendment_reason VARCHAR(500),
     created_by VARCHAR(100),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

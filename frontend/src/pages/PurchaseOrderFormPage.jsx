@@ -27,7 +27,7 @@ export default function PurchaseOrderFormPage() {
     formState: { isSubmitting, errors },
   } = useForm({
     resolver: zodResolver(purchaseOrderSchema),
-    defaultValues: { supplier_id: '', department: '', project_id: '', lines: [{ item_id: '', quantity_ordered: '', mr_id: '' }] },
+    defaultValues: { supplier_id: '', department: '', project_id: '', expected_delivery_date: '', lines: [{ item_id: '', quantity_ordered: '', mr_id: '' }] },
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'lines' });
 
@@ -82,6 +82,9 @@ export default function PurchaseOrderFormPage() {
             name="project_id" control={control} label="Project (optional — draws from that project's budget)"
             options={projects} getLabel={(p) => p.project_name} getValue={(p) => p.id}
           />
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <RHFTextField name="expected_delivery_date" control={control} label="Expected Delivery Date" type="date" InputLabelProps={{ shrink: true }} />
         </Grid>
       </Grid>
 

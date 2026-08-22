@@ -154,8 +154,11 @@ router.post('/:id/approve', requireRole(ROLES.STORE_MANAGER, ROLES.ADMIN), async
     );
 
     if (receipt.po_id) {
+      // Delivery Tracking (Requirements-Purchase.md §1): stamp the actual delivery date on every
+      // approved GRN against this PO — the most recent one reflects when goods last arrived
+      await client.query(`UPDATE purchase_orders SET actual_delivery_date = CURRENT_DATE WHERE id = $1`, [receipt.po_id]);
       await client.query(
-        `UPDATE purchase_orders SET status = 'PARTIALLY_RECEIVED' WHERE id = $1 AND status = 'OPEN'`,
+        `UPDATE purchase_orders SET status = 'PARTIALLY_RECEIVED' WHERE id = $1 AND status IN ('OPEN', 'AMENDED')`,
         [receipt.po_id]
       );
     }

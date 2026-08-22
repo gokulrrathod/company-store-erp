@@ -54,11 +54,17 @@ export const purchaseOrderSchema = z.object({
   supplier_id: z.union([z.string(), z.number()]).refine((v) => v !== '' && v != null, 'Select a supplier'),
   department: requiredString('Department', 100),
   project_id: z.union([z.string(), z.number()]).optional().nullable(),
+  expected_delivery_date: optionalString(20),
   lines: z.array(z.object({
     item_id: z.union([z.string(), z.number()]).refine((v) => v !== '' && v != null, 'Select an item'),
     quantity_ordered: positiveNumber,
     mr_id: z.union([z.string(), z.number()]).optional().nullable(),
   })).min(1, 'Add at least one line item'),
+});
+
+export const poAmendSchema = z.object({
+  expected_delivery_date: optionalString(20),
+  amendment_reason: requiredString('Amendment reason', 500),
 });
 
 export const materialReceiptSchema = z.object({
