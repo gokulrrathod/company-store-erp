@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
-import { Typography, Tabs, Tab, Box } from '@mui/material';
+import { useEffect, useMemo, useState } from 'react';
+import { Typography, Tabs, Tab, Box, Stack, TextField, Button, InputAdornment } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import DownloadIcon from '@mui/icons-material/Download';
 import DataTable from '../components/DataTable.jsx';
 import ListPageLayout from '../components/ListPageLayout.jsx';
 import { api } from '../api/client.js';
@@ -8,6 +10,7 @@ const REPORTS = [
   {
     key: 'stock-ledger',
     label: 'Stock Ledger',
+    department: 'Store',
     columns: [
       { field: 'item_code', headerName: 'Code', minWidth: 100 },
       { field: 'item_name', headerName: 'Item', minWidth: 180 },
@@ -22,6 +25,7 @@ const REPORTS = [
   {
     key: 'fifo',
     label: 'FIFO Report',
+    department: 'Store',
     columns: [
       { field: 'item_code', headerName: 'Code', minWidth: 100 },
       { field: 'item_name', headerName: 'Item', minWidth: 180 },
@@ -35,6 +39,7 @@ const REPORTS = [
   {
     key: 'batch-wise',
     label: 'Batch-wise Stock',
+    department: 'Store',
     columns: [
       { field: 'item_code', headerName: 'Code', minWidth: 100 },
       { field: 'item_name', headerName: 'Item', minWidth: 180 },
@@ -47,6 +52,7 @@ const REPORTS = [
   {
     key: 'supplier-wise-receipts',
     label: 'Supplier-wise Receipts',
+    department: 'Store',
     columns: [
       { field: 'supplier_name', headerName: 'Supplier', minWidth: 200 },
       { field: 'grn_count', headerName: 'GRNs', type: 'numericColumn', minWidth: 100 },
@@ -57,6 +63,7 @@ const REPORTS = [
   {
     key: 'department-wise-consumption',
     label: 'Department-wise Consumption',
+    department: 'Store',
     columns: [
       { field: 'department', headerName: 'Department', minWidth: 200 },
       { field: 'requisition_count', headerName: 'Requisitions', type: 'numericColumn', minWidth: 140 },
@@ -66,6 +73,7 @@ const REPORTS = [
   {
     key: 'goods-receipt-register',
     label: 'Goods Receipt Register',
+    department: 'Store',
     columns: [
       { field: 'grn_number', headerName: 'GRN No.', minWidth: 130 },
       { field: 'po_number', headerName: 'PO No.', minWidth: 120, valueFormatter: (p) => p.value || '—' },
@@ -80,6 +88,7 @@ const REPORTS = [
   {
     key: 'material-issue-register',
     label: 'Material Issue Register',
+    department: 'Store',
     columns: [
       { field: 'requisition_number', headerName: 'Requisition No.', minWidth: 150 },
       { field: 'department', headerName: 'Department', minWidth: 130 },
@@ -96,6 +105,7 @@ const REPORTS = [
   {
     key: 'inventory-summary',
     label: 'Inventory Summary',
+    department: 'Store',
     columns: [
       { field: 'code', headerName: 'Code', minWidth: 100 },
       { field: 'name', headerName: 'Item', minWidth: 180 },
@@ -114,6 +124,7 @@ const REPORTS = [
   {
     key: 'rejected-material',
     label: 'Rejected Material',
+    department: 'Store',
     columns: [
       { field: 'rejection_number', headerName: 'Rejection No.', minWidth: 140 },
       { headerName: 'Item', minWidth: 180, valueGetter: (p) => `${p.data.item_code} — ${p.data.item_name}` },
@@ -128,6 +139,7 @@ const REPORTS = [
   {
     key: 'scrap',
     label: 'Scrap Report',
+    department: 'Store',
     columns: [
       { field: 'rejection_number', headerName: 'Rejection No.', minWidth: 140 },
       { headerName: 'Item', minWidth: 180, valueGetter: (p) => `${p.data.item_code} — ${p.data.item_name}` },
@@ -141,6 +153,7 @@ const REPORTS = [
   {
     key: 'inventory-audit',
     label: 'Inventory Audit',
+    department: 'Store',
     columns: [
       { field: 'changed_at', headerName: 'Date/Time', minWidth: 170, valueFormatter: (p) => new Date(p.value).toLocaleString() },
       { field: 'table_name', headerName: 'Table', minWidth: 110 },
@@ -154,6 +167,7 @@ const REPORTS = [
   {
     key: 'vendor-performance',
     label: 'Vendor Performance',
+    department: 'Purchase',
     columns: [
       { field: 'supplier_name', headerName: 'Supplier', minWidth: 200 },
       { field: 'vendor_status', headerName: 'Status', minWidth: 130 },
@@ -169,6 +183,7 @@ const REPORTS = [
   {
     key: 'delivery-delay',
     label: 'Delivery Delay',
+    department: 'Purchase',
     columns: [
       { field: 'po_number', headerName: 'PO Number', minWidth: 130 },
       { field: 'supplier_name', headerName: 'Supplier', minWidth: 180 },
@@ -181,29 +196,82 @@ const REPORTS = [
   },
 ];
 
+const DEPARTMENTS = ['Store', 'Purchase'];
+
+// Converts the current report's rows to CSV using the same column set shown on screen
+// (headerName label, valueFormatter for readable values) so the export matches the view.
+function exportToCsv(report, rows) {
+  const escape = (v) => {
+    const s = v == null ? '' : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const header = report.columns.map((c) => c.headerName || c.field).join(',');
+  const lines = rows.map((row) =>
+    report.columns
+      .map((c) => {
+        const raw = c.valueGetter ? c.valueGetter({ data: row }) : row[c.field];
+        const formatted = c.valueFormatter ? c.valueFormatter({ value: raw, data: row }) : raw;
+        return escape(formatted);
+      })
+      .join(',')
+  );
+  const csv = [header, ...lines].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${report.key}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function ReportsPage() {
-  const [tab, setTab] = useState(0);
+  const [department, setDepartment] = useState('Store');
+  const departmentReports = useMemo(() => REPORTS.filter((r) => r.department === department), [department]);
+  const [reportKey, setReportKey] = useState(departmentReports[0].key);
   const [rows, setRows] = useState([]);
-  const active = REPORTS[tab];
+  const [search, setSearch] = useState('');
+  const active = REPORTS.find((r) => r.key === reportKey) || departmentReports[0];
 
   useEffect(() => {
     api.get(`/reports/${active.key}`).then((res) => setRows(res.data)).catch(() => setRows([]));
   }, [active.key]);
 
+  const changeDepartment = (dept) => {
+    setDepartment(dept);
+    setSearch('');
+    const firstReport = REPORTS.find((r) => r.department === dept);
+    setReportKey(firstReport.key);
+  };
+
   return (
     <ListPageLayout
       header={
         <>
-          <Typography variant="h5" gutterBottom>Store Reports</Typography>
+          <Typography variant="h5" gutterBottom>Reports</Typography>
+          <Tabs value={department} onChange={(_, v) => changeDepartment(v)} sx={{ minHeight: 36, mb: 0.5 }}>
+            {DEPARTMENTS.map((d) => <Tab key={d} value={d} label={d} sx={{ minHeight: 36, py: 0.5 }} />)}
+          </Tabs>
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" scrollButtons="auto">
-              {REPORTS.map((r) => <Tab key={r.key} label={r.label} />)}
+            <Tabs value={reportKey} onChange={(_, v) => setReportKey(v)} variant="scrollable" scrollButtons="auto">
+              {departmentReports.map((r) => <Tab key={r.key} value={r.key} label={r.label} />)}
             </Tabs>
           </Box>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1.5 }}>
+            <TextField
+              size="small" placeholder="Search this report" value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              sx={{ width: 280 }}
+              InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
+            />
+            <Button size="small" startIcon={<DownloadIcon />} onClick={() => exportToCsv(active, rows)} disabled={!rows.length}>
+              Export CSV
+            </Button>
+          </Stack>
         </>
       }
     >
-      <DataTable rowData={rows} columnDefs={active.columns} emptyMessage="No data for this report yet." fillHeight />
+      <DataTable rowData={rows} columnDefs={active.columns} quickFilterText={search} emptyMessage="No data for this report yet." fillHeight />
     </ListPageLayout>
   );
 }

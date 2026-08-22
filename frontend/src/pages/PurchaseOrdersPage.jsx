@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
 import {
   Typography, Button, Stack, Chip, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Alert,
+  IconButton, Menu, MenuItem, ListItemIcon, ListItemText,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import EditCalendarIcon from '@mui/icons-material/EditCalendar';
 import { useNavigate } from 'react-router-dom';
 import DataTable from '../components/DataTable.jsx';
 import ListPageLayout from '../components/ListPageLayout.jsx';
@@ -12,6 +16,33 @@ import { useAuth } from '../auth/AuthContext.jsx';
 const statusColor = { OPEN: 'default', PARTIALLY_RECEIVED: 'warning', CLOSED: 'success', AMENDED: 'error' };
 const budgetStatusColor = { WITHIN_BUDGET: 'success', PENDING_FINANCE_APPROVAL: 'error', FINANCE_APPROVED: 'success' };
 const isPastDue = (row) => row.expected_delivery_date && !row.actual_delivery_date && new Date(row.expected_delivery_date) < new Date();
+
+// A single pinned kebab menu instead of one grid column per action — stays reachable
+// however many columns the table grows to, and however many actions get added later.
+function RowActionsMenu({ row, options }) {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const available = options.filter((o) => o.show);
+  if (!available.length) return null;
+
+  return (
+    <>
+      <IconButton size="small" onClick={(e) => setAnchorEl(e.currentTarget)}>
+        <MoreVertIcon fontSize="small" />
+      </IconButton>
+      <Menu anchorEl={anchorEl} open={!!anchorEl} onClose={() => setAnchorEl(null)}>
+        {available.map((o) => (
+          <MenuItem
+            key={o.label}
+            onClick={() => { setAnchorEl(null); o.onClick(row); }}
+          >
+            <ListItemIcon>{o.icon}</ListItemIcon>
+            <ListItemText>{o.label}</ListItemText>
+          </MenuItem>
+        ))}
+      </Menu>
+    </>
+  );
+}
 
 export default function PurchaseOrdersPage() {
   const { user } = useAuth();
@@ -91,28 +122,32 @@ export default function PurchaseOrdersPage() {
       cellRenderer: (p) => <Chip size="small" label={p.value.replace(/_/g, ' ')} color={budgetStatusColor[p.value]} />,
     },
     { field: 'created_at', headerName: 'Date', minWidth: 120, valueFormatter: (p) => new Date(p.value).toLocaleDateString() },
-    ...(canFinanceApprove
+    ...(canFinanceApprove || canAmend
       ? [{
-          headerName: 'Budget Action',
-          minWidth: 150,
+          headerName: '',
+          minWidth: 60,
+          width: 60,
+          pinned: 'right',
           sortable: false,
           filter: false,
-          cellRenderer: (p) =>
-            p.data.budget_status === 'PENDING_FINANCE_APPROVAL' ? (
-              <Button size="small" variant="contained" onClick={() => financeApprove(p.data.id)}>Approve Budget</Button>
-            ) : null,
-        }]
-      : []),
-    ...(canAmend
-      ? [{
-          headerName: 'Delivery Action',
-          minWidth: 110,
-          sortable: false,
-          filter: false,
-          cellRenderer: (p) =>
-            p.data.status !== 'CLOSED' ? (
-              <Button size="small" onClick={() => openAmend(p.data)}>Amend</Button>
-            ) : null,
+          resizable: false,
+          cellRenderer: (p) => (
+            <RowActionsMenu
+              row={p.data}
+              options={[
+                {
+                  label: 'Approve Budget', icon: <AccountBalanceIcon fontSize="small" />,
+                  show: canFinanceApprove && p.data.budget_status === 'PENDING_FINANCE_APPROVAL',
+                  onClick: (row) => financeApprove(row.id),
+                },
+                {
+                  label: 'Amend', icon: <EditCalendarIcon fontSize="small" />,
+                  show: canAmend && p.data.status !== 'CLOSED',
+                  onClick: (row) => openAmend(row),
+                },
+              ]}
+            />
+          ),
         }]
       : []),
   ];
