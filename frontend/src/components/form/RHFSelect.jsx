@@ -1,7 +1,7 @@
 import { Controller } from 'react-hook-form';
 import { TextField, MenuItem } from '@mui/material';
 
-export default function RHFSelect({ name, control, label, required, options, getLabel, getValue, ...props }) {
+export default function RHFSelect({ name, control, label, required, options, getLabel, getValue, onValueChange, ...props }) {
   return (
     <Controller
       name={name}
@@ -10,6 +10,10 @@ export default function RHFSelect({ name, control, label, required, options, get
         <TextField
           {...field}
           {...props}
+          onChange={(e) => {
+            field.onChange(e);
+            onValueChange?.(e.target.value, options.find((opt) => String(getValue(opt)) === String(e.target.value)));
+          }}
           select
           label={required ? `${label} *` : label}
           error={!!fieldState.error}

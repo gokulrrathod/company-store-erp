@@ -53,6 +53,7 @@ export const purchaseOrderSchema = z.object({
   lines: z.array(z.object({
     item_id: z.union([z.string(), z.number()]).refine((v) => v !== '' && v != null, 'Select an item'),
     quantity_ordered: positiveNumber,
+    mr_id: z.union([z.string(), z.number()]).optional().nullable(),
   })).min(1, 'Add at least one line item'),
 });
 

@@ -37,8 +37,11 @@ router.get('/:id', asyncHandler(async (req, res) => {
   if (!poRows.length) return res.status(404).json({ error: 'Purchase order not found' });
 
   const { rows: lines } = await pool.query(
-    `SELECT pl.*, i.code AS item_code, i.name AS item_name
-     FROM po_lines pl JOIN items i ON i.id = pl.item_id WHERE pl.po_id = $1`,
+    `SELECT pl.*, i.code AS item_code, i.name AS item_name, mr.requisition_number
+     FROM po_lines pl
+     JOIN items i ON i.id = pl.item_id
+     LEFT JOIN material_requests mr ON mr.id = pl.mr_id
+     WHERE pl.po_id = $1`,
     [req.params.id]
   );
   res.json({ ...poRows[0], lines });
@@ -58,6 +61,17 @@ router.post('/', requireRole(ROLES.PURCHASE, ROLES.ADMIN), validate(purchaseOrde
       const { rows: itemRows } = await client.query(`SELECT unit_rate FROM items WHERE id = $1`, [line.item_id]);
       if (!itemRows.length) throw new Error('Item not found');
       total_value += Number(itemRows[0].unit_rate) * Number(line.quantity_ordered);
+
+      if (line.mr_id) {
+        const { rows: mrRows } = await client.query(
+          `SELECT status FROM material_requests WHERE id = $1 FOR UPDATE`,
+          [line.mr_id]
+        );
+        if (!mrRows.length) throw new Error('Linked material request not found');
+        if (mrRows[0].status !== 'FORWARDED_TO_PURCHASE') {
+          throw new Error('Linked material request is not awaiting purchase');
+        }
+      }
     }
 
     const { rows: budgetRows } = await client.query(
@@ -83,9 +97,12 @@ router.post('/', requireRole(ROLES.PURCHASE, ROLES.ADMIN), validate(purchaseOrde
     const po = rows[0];
     for (const line of lines) {
       await client.query(
-        `INSERT INTO po_lines (po_id, item_id, quantity_ordered) VALUES ($1, $2, $3)`,
-        [po.id, line.item_id, line.quantity_ordered]
+        `INSERT INTO po_lines (po_id, item_id, quantity_ordered, mr_id) VALUES ($1, $2, $3, $4)`,
+        [po.id, line.item_id, line.quantity_ordered, line.mr_id || null]
       );
+      if (line.mr_id) {
+        await client.query(`UPDATE material_requests SET status = 'PO_RAISED' WHERE id = $1`, [line.mr_id]);
+      }
     }
     await client.query('COMMIT');
     res.status(201).json(po);

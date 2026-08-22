@@ -47,7 +47,8 @@ CREATE TABLE IF NOT EXISTS material_requests (
     balance_stock NUMERIC(12,2),
     purpose VARCHAR(200),
     issue_date TIMESTAMPTZ,
-    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN
+        ('PENDING', 'APPROVED', 'REJECTED', 'FORWARDED_TO_PURCHASE', 'PO_RAISED')),
     remarks VARCHAR(500),
     approved_by VARCHAR(100),
     approved_at TIMESTAMPTZ,
@@ -123,8 +124,11 @@ CREATE TABLE IF NOT EXISTS po_lines (
     id SERIAL PRIMARY KEY,
     po_id INTEGER NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
     item_id INTEGER NOT NULL REFERENCES items(id),
-    quantity_ordered NUMERIC(12,2) NOT NULL CHECK (quantity_ordered > 0)
+    quantity_ordered NUMERIC(12,2) NOT NULL CHECK (quantity_ordered > 0),
+    mr_id INTEGER REFERENCES material_requests(id)
 );
+
+CREATE INDEX IF NOT EXISTS idx_po_lines_mr ON po_lines(mr_id);
 
 -- ===== Material Receiving & Inspection (SOP Module 1) =====
 CREATE TABLE IF NOT EXISTS material_receipts (

@@ -48,6 +48,18 @@ router.post('/', validate(materialRequestSchema), asyncHandler(async (req, res) 
   }
 }));
 
+// Store Manager forwards an MR to Purchase when stock isn't available to issue directly
+// (Requirements-Store.md §2: "Stock Not Available -> Forward to Purchase")
+router.patch('/:id/forward', requireRole(ROLES.STORE_MANAGER, ROLES.ADMIN), asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(
+    `UPDATE material_requests SET status = 'FORWARDED_TO_PURCHASE'
+     WHERE id = $1 AND status = 'PENDING' RETURNING *`,
+    [req.params.id]
+  );
+  if (!rows.length) return res.status(400).json({ error: 'Request not found or not pending' });
+  res.json(rows[0]);
+}));
+
 router.patch('/:id/status', requireRole(ROLES.STORE_MANAGER, ROLES.ADMIN), validate(materialRequestStatusSchema), asyncHandler(async (req, res) => {
   const { status } = req.body;
 
@@ -60,7 +72,9 @@ router.patch('/:id/status', requireRole(ROLES.STORE_MANAGER, ROLES.ADMIN), valid
     );
     if (!reqRows.length) throw new Error('Material request not found');
     const request = reqRows[0];
-    if (request.status !== 'PENDING') throw new Error('Request already actioned');
+    if (!['PENDING', 'FORWARDED_TO_PURCHASE', 'PO_RAISED'].includes(request.status)) {
+      throw new Error('Request already actioned');
+    }
 
     let quantity_issued = null;
     let balance_stock = null;

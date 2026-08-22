@@ -7,6 +7,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
+import SendIcon from '@mui/icons-material/Send';
 import DataTable from '../components/DataTable.jsx';
 import ListPageLayout from '../components/ListPageLayout.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
@@ -14,11 +15,16 @@ import RHFSelect from '../components/form/RHFSelect.jsx';
 import { materialRequestSchema } from '../validation/schemas.js';
 import { applyServerErrors } from '../utils/applyServerErrors.js';
 import { api } from '../api/client.js';
+import { useAuth } from '../auth/AuthContext.jsx';
 
-const statusColor = { PENDING: 'warning', APPROVED: 'success', REJECTED: 'error' };
+const statusColor = {
+  PENDING: 'warning', APPROVED: 'success', REJECTED: 'error',
+  FORWARDED_TO_PURCHASE: 'info', PO_RAISED: 'secondary',
+};
 const DEPARTMENTS = ['Production', 'Purchase', 'Quality', 'Maintenance', 'Admin'];
 
 export default function MaterialRequestsPage() {
+  const { user } = useAuth();
   const [requests, setRequests] = useState([]);
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
@@ -61,6 +67,13 @@ export default function MaterialRequestsPage() {
     load();
   };
 
+  const forward = async (id) => {
+    await api.patch(`/material-requests/${id}/forward`);
+    load();
+  };
+
+  const canAction = ['STORE_MANAGER', 'ADMIN'].includes(user?.role);
+
   const columnDefs = [
     { field: 'requisition_number', headerName: 'Requisition No.', minWidth: 150 },
     { field: 'department', headerName: 'Department', minWidth: 130 },
@@ -78,16 +91,30 @@ export default function MaterialRequestsPage() {
     },
     {
       headerName: 'Actions',
-      minWidth: 100,
+      minWidth: 160,
       sortable: false,
       filter: false,
-      cellRenderer: (p) =>
-        p.data.status === 'PENDING' ? (
-          <>
-            <IconButton size="small" color="success" onClick={() => setStatus(p.data.id, 'APPROVED')}><CheckIcon fontSize="small" /></IconButton>
-            <IconButton size="small" color="error" onClick={() => setStatus(p.data.id, 'REJECTED')}><CloseIcon fontSize="small" /></IconButton>
-          </>
-        ) : null,
+      cellRenderer: (p) => {
+        if (!canAction) return null;
+        if (p.data.status === 'PENDING') {
+          return (
+            <>
+              <IconButton size="small" color="success" onClick={() => setStatus(p.data.id, 'APPROVED')} title="Approve &amp; issue"><CheckIcon fontSize="small" /></IconButton>
+              <IconButton size="small" color="error" onClick={() => setStatus(p.data.id, 'REJECTED')} title="Reject"><CloseIcon fontSize="small" /></IconButton>
+              <IconButton size="small" color="info" onClick={() => forward(p.data.id)} title="Forward to Purchase (stock unavailable)"><SendIcon fontSize="small" /></IconButton>
+            </>
+          );
+        }
+        if (['FORWARDED_TO_PURCHASE', 'PO_RAISED'].includes(p.data.status)) {
+          return (
+            <>
+              <IconButton size="small" color="success" onClick={() => setStatus(p.data.id, 'APPROVED')} title="Stock arrived — approve &amp; issue"><CheckIcon fontSize="small" /></IconButton>
+              <IconButton size="small" color="error" onClick={() => setStatus(p.data.id, 'REJECTED')} title="Reject"><CloseIcon fontSize="small" /></IconButton>
+            </>
+          );
+        }
+        return null;
+      },
     },
   ];
 
