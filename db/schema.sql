@@ -594,3 +594,23 @@ CREATE INDEX IF NOT EXISTS idx_invoices_po ON invoices(purchase_order_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_so ON invoices(sales_order_id);
 CREATE INDEX IF NOT EXISTS idx_invoice_lines_invoice ON invoice_lines(invoice_id);
 CREATE INDEX IF NOT EXISTS idx_payments_invoice ON payments(invoice_id);
+
+-- =====================================================================
+-- SHARED ATTACHMENTS (system-wide file upload capability)
+-- Generic entity_type/entity_id pattern so every module reuses one table
+-- instead of a per-module file column.
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS attachments (
+    id SERIAL PRIMARY KEY,
+    entity_type VARCHAR(50) NOT NULL,
+    entity_id INTEGER NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    mime_type VARCHAR(150) NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    file_data BYTEA NOT NULL,
+    uploaded_by VARCHAR(100) NOT NULL,
+    uploaded_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_attachments_entity ON attachments(entity_type, entity_id);

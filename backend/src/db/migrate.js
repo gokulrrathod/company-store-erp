@@ -122,6 +122,23 @@ const MIGRATIONS = [
       CREATE TRIGGER audit_invoice_lines AFTER UPDATE ON invoice_lines FOR EACH ROW EXECUTE FUNCTION audit_log_row_changes();
     `,
   },
+  {
+    name: '006_attachments',
+    sql: `
+      CREATE TABLE IF NOT EXISTS attachments (
+        id SERIAL PRIMARY KEY,
+        entity_type VARCHAR(50) NOT NULL,
+        entity_id INTEGER NOT NULL,
+        file_name VARCHAR(255) NOT NULL,
+        mime_type VARCHAR(150) NOT NULL,
+        size_bytes INTEGER NOT NULL,
+        file_data BYTEA NOT NULL,
+        uploaded_by VARCHAR(100) NOT NULL,
+        uploaded_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_attachments_entity ON attachments(entity_type, entity_id);
+    `,
+  },
 ];
 
 async function ensureMigrationsTable(client) {

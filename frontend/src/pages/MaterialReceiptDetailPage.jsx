@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Typography, Chip, Button, Stack, Alert, IconButton } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DataTable from '../components/DataTable.jsx';
+import AttachmentsPanel from '../components/AttachmentsPanel.jsx';
 import { api } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 
@@ -111,6 +112,10 @@ export default function MaterialReceiptDetailPage() {
           </Button>
         </Stack>
       )}
+
+      <Box sx={{ mt: 3 }}>
+        <AttachmentsPanel entityType="material_receipt" entityId={detail.id} title="Invoice / Photos" />
+      </Box>
     </Box>
   );
 }

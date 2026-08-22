@@ -9,6 +9,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
 import DataTable from '../components/DataTable.jsx';
+import AttachmentsPanel from '../components/AttachmentsPanel.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import { bomLineSchema, ecnSchema } from '../validation/schemas.js';
 import { CHECKLIST_ITEMS } from '../config/designChecklist.js';
@@ -283,6 +284,10 @@ export default function DrawingDetailPage() {
           )}
         </Section>
       )}
+
+      <Section title="Attachments">
+        <AttachmentsPanel entityType="drawing" entityId={drawing.id} canUpload={isEngineer && drawing.status !== 'RELEASED'} />
+      </Section>
 
       <Divider sx={{ my: 3 }} />
       <Typography variant="caption" color="text.secondary">

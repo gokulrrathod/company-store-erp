@@ -25,6 +25,7 @@ import vehiclesRouter from './routes/vehicles.js';
 import invoicesRouter from './routes/invoices.js';
 import notificationsRouter from './routes/notifications.js';
 import auditLogRouter from './routes/auditLog.js';
+import attachmentsRouter from './routes/attachments.js';
 import { runMigrations } from './db/migrate.js';
 
 const app = express();
@@ -55,6 +56,7 @@ app.use('/api/vehicles', vehiclesRouter);
 app.use('/api/invoices', invoicesRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/audit-log', auditLogRouter);
+app.use('/api/attachments', attachmentsRouter);
 
 // Centralized error handler: keep unexpected failures as JSON, not HTML stack traces
 app.use((err, req, res, next) => {

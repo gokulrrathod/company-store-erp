@@ -9,6 +9,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
 import RHFTextField from '../components/form/RHFTextField.jsx';
+import AttachmentsPanel from '../components/AttachmentsPanel.jsx';
 import { insuranceRecordSchema } from '../validation/schemas.js';
 import { applyServerErrors } from '../utils/applyServerErrors.js';
 import { api } from '../api/client.js';
@@ -117,6 +118,9 @@ export default function VehicleDetailPage() {
               </Box>
               <Chip size="small" label={rec.renewal_status} color={renewalColor[rec.renewal_status]} />
             </Stack>
+            <Box sx={{ mt: 1.5 }}>
+              <AttachmentsPanel entityType="insurance_record" entityId={rec.id} canUpload={canManage} title="Policy Document" />
+            </Box>
           </Box>
         ))}
       </Section>
