@@ -41,6 +41,63 @@ const MIGRATIONS = [
       WHERE quantity > 0;
     `,
   },
+  {
+    name: '004_audit_trail',
+    sql: `
+      CREATE TABLE IF NOT EXISTS audit_log (
+        id SERIAL PRIMARY KEY,
+        table_name VARCHAR(100) NOT NULL,
+        record_id VARCHAR(50) NOT NULL,
+        field_name VARCHAR(100) NOT NULL,
+        old_value TEXT,
+        new_value TEXT,
+        changed_by VARCHAR(100) NOT NULL DEFAULT 'system',
+        changed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_audit_log_table_record ON audit_log(table_name, record_id);
+      CREATE INDEX IF NOT EXISTS idx_audit_log_changed_at ON audit_log(changed_at DESC);
+
+      CREATE OR REPLACE FUNCTION audit_log_row_changes() RETURNS TRIGGER AS $body$
+      DECLARE
+        old_data jsonb := to_jsonb(OLD);
+        new_data jsonb := to_jsonb(NEW);
+        key text;
+        old_val text;
+        new_val text;
+        actor text := NULLIF(current_setting('app.current_user_name', true), '');
+      BEGIN
+        FOR key IN SELECT jsonb_object_keys(new_data) LOOP
+          old_val := old_data ->> key;
+          new_val := new_data ->> key;
+          IF old_val IS DISTINCT FROM new_val THEN
+            INSERT INTO audit_log (table_name, record_id, field_name, old_value, new_value, changed_by)
+            VALUES (TG_TABLE_NAME, NEW.id::text, key, old_val, new_val, COALESCE(actor, 'system'));
+          END IF;
+        END LOOP;
+        RETURN NEW;
+      END;
+      $body$ LANGUAGE plpgsql;
+
+      DO $trig$
+      DECLARE
+        t text;
+      BEGIN
+        FOREACH t IN ARRAY ARRAY[
+          'items', 'item_batches', 'suppliers', 'purchase_orders', 'receipt_lines',
+          'material_receipts', 'material_requests', 'enquiries', 'sales_orders',
+          'drawings', 'engineering_change_notices', 'production_plans',
+          'production_schedules', 'projects', 'reconciliations', 'vehicles', 'invoices'
+        ]
+        LOOP
+          EXECUTE format(
+            'DROP TRIGGER IF EXISTS audit_%1$s ON %1$s; CREATE TRIGGER audit_%1$s AFTER UPDATE ON %1$s FOR EACH ROW EXECUTE FUNCTION audit_log_row_changes();',
+            t
+          );
+        END LOOP;
+      END;
+      $trig$;
+    `,
+  },
 ];
 
 async function ensureMigrationsTable(client) {

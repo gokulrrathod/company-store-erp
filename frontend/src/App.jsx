@@ -37,6 +37,7 @@ import VehiclesPage from './pages/VehiclesPage.jsx';
 import VehicleDetailPage from './pages/VehicleDetailPage.jsx';
 import InvoicesPage from './pages/InvoicesPage.jsx';
 import InvoiceDetailPage from './pages/InvoiceDetailPage.jsx';
+import AuditLogPage from './pages/AuditLogPage.jsx';
 
 export default function App() {
   return (
@@ -84,6 +85,7 @@ export default function App() {
                 <Route path="/vehicles/:id" element={<VehicleDetailPage />} />
                 <Route path="/invoices" element={<InvoicesPage />} />
                 <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+                <Route path="/audit-log" element={<AuditLogPage />} />
               </Routes>
             </NavShell>
           </ProtectedRoute>

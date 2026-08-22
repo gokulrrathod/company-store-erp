@@ -23,6 +23,7 @@ import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturi
 import EngineeringIcon from '@mui/icons-material/Engineering';
 import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined';
 import PaymentsIcon from '@mui/icons-material/Payments';
+import HistoryIcon from '@mui/icons-material/History';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { Link, useLocation } from 'react-router-dom';
@@ -104,6 +105,12 @@ export const NAV_GROUPS = [
     section: 'Reports',
     items: [
       { label: 'Reports', path: '/reports', icon: AssessmentIcon, roles: null },
+    ],
+  },
+  {
+    section: 'Admin',
+    items: [
+      { label: 'Audit Trail', path: '/audit-log', icon: HistoryIcon, roles: ['ADMIN'] },
     ],
   },
 ];
