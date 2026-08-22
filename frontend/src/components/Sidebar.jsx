@@ -81,6 +81,7 @@ export const NAV_GROUPS = [
     section: 'Production',
     items: [
       { label: 'Production Plans', path: '/production-plans', icon: PrecisionManufacturingIcon, roles: null },
+      { label: 'Resource Allocation', path: '/resource-allocation', icon: EngineeringIcon, roles: null },
     ],
   },
   {

@@ -31,6 +31,7 @@ import DrawingDetailPage from './pages/DrawingDetailPage.jsx';
 import ProductionPlansPage from './pages/ProductionPlansPage.jsx';
 import ProductionPlanDetailPage from './pages/ProductionPlanDetailPage.jsx';
 import ScheduleDetailPage from './pages/ScheduleDetailPage.jsx';
+import ResourceAllocationPage from './pages/ResourceAllocationPage.jsx';
 import ProjectsPage from './pages/ProjectsPage.jsx';
 import ProjectDetailPage from './pages/ProjectDetailPage.jsx';
 import VehiclesPage from './pages/VehiclesPage.jsx';
@@ -78,6 +79,7 @@ export default function App() {
                 <Route path="/drawings/:id" element={<DrawingDetailPage />} />
                 <Route path="/production-plans" element={<ProductionPlansPage />} />
                 <Route path="/production-plans/:id" element={<ProductionPlanDetailPage />} />
+                <Route path="/resource-allocation" element={<ResourceAllocationPage />} />
                 <Route path="/production-schedules/:id" element={<ScheduleDetailPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route path="/projects/:id" element={<ProjectDetailPage />} />

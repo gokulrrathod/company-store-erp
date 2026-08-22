@@ -4,7 +4,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import {
   productionPlanSchema, scheduleSchema, scheduleStatusSchema, stageInspectionSchema, reworkRejectionSchema,
-  dailyProductionEntrySchema,
+  dailyProductionEntrySchema, machineAllocationSchema, manpowerAllocationSchema, spaceAllocationSchema,
 } from '../validation/schemas.js';
 import { ROLES } from '../config/auth.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
@@ -129,6 +129,97 @@ router.post('/schedules/:id/daily-entries', requireRole(ROLES.PRODUCTION, ROLES.
     `INSERT INTO daily_production_entries (schedule_id, entry_date, shift, engineer, planned_qty, actual_qty, balance_qty)
      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
     [req.params.id, entry_date, shift, engineer, planned_qty, actual_qty, balance_qty]
+  );
+  res.status(201).json(rows[0]);
+}));
+
+// ===== Resource Allocation (Requirements-Production.md §1) — Machine/Manpower reference the shared
+// Machinery/Labour masters (Recommended Decision #6); Space is a fixed set of bays, no master needed =====
+
+const ALLOCATION_ROLES = [ROLES.PRODUCTION, ROLES.PRODUCTION_HEAD, ROLES.ADMIN];
+
+router.get('/resource-allocations', asyncHandler(async (req, res) => {
+  const { rows: machineAllocations } = await pool.query(
+    `SELECT ma.*, m.machine_name, m.machine_number
+     FROM machine_allocations ma JOIN machines m ON m.id = ma.machine_id
+     ORDER BY ma.created_at DESC`
+  );
+  const { rows: manpowerAllocations } = await pool.query(
+    `SELECT pa.*, l.employee_name, l.department AS labour_department
+     FROM manpower_allocations pa JOIN labour l ON l.id = pa.labour_id
+     ORDER BY pa.created_at DESC`
+  );
+  const { rows: spaceAllocations } = await pool.query(
+    `SELECT * FROM space_allocations ORDER BY created_at DESC`
+  );
+  res.json({ machine_allocations: machineAllocations, manpower_allocations: manpowerAllocations, space_allocations: spaceAllocations });
+}));
+
+router.post('/machine-allocations', requireRole(...ALLOCATION_ROLES), validate(machineAllocationSchema), asyncHandler(async (req, res) => {
+  const { machine_id, project_reference, allocated_from, allocated_to } = req.body;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: machineRows } = await client.query(`SELECT * FROM machines WHERE id = $1 FOR UPDATE`, [machine_id]);
+    if (!machineRows.length) throw new Error('Machine not found');
+    if (machineRows[0].availability_status !== 'AVAILABLE') throw new Error('Machine is not currently available');
+
+    const { rows } = await client.query(
+      `INSERT INTO machine_allocations (machine_id, project_reference, allocated_from, allocated_to, allocated_by)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [machine_id, project_reference, allocated_from, allocated_to || null, req.user.name]
+    );
+    await client.query(`UPDATE machines SET availability_status = 'ALLOCATED' WHERE id = $1`, [machine_id]);
+    await client.query('COMMIT');
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(400).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+}));
+
+router.patch('/machine-allocations/:id/release', requireRole(...ALLOCATION_ROLES), asyncHandler(async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `UPDATE machine_allocations SET released_at = now(), allocated_to = COALESCE(allocated_to, CURRENT_DATE)
+       WHERE id = $1 AND released_at IS NULL RETURNING *`,
+      [req.params.id]
+    );
+    if (!rows.length) throw new Error('Allocation not found or already released');
+    await client.query(`UPDATE machines SET availability_status = 'AVAILABLE' WHERE id = $1`, [rows[0].machine_id]);
+    await client.query('COMMIT');
+    res.json(rows[0]);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(400).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+}));
+
+router.post('/manpower-allocations', requireRole(...ALLOCATION_ROLES), validate(manpowerAllocationSchema), asyncHandler(async (req, res) => {
+  const { labour_id, project_reference, shift, assigned_job, allocated_from, allocated_to } = req.body;
+  const { rows: labourRows } = await pool.query(`SELECT id FROM labour WHERE id = $1`, [labour_id]);
+  if (!labourRows.length) return res.status(400).json({ error: 'Employee not found' });
+
+  const { rows } = await pool.query(
+    `INSERT INTO manpower_allocations (labour_id, project_reference, shift, assigned_job, allocated_from, allocated_to, allocated_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+    [labour_id, project_reference, shift, assigned_job, allocated_from, allocated_to || null, req.user.name]
+  );
+  res.status(201).json(rows[0]);
+}));
+
+router.post('/space-allocations', requireRole(...ALLOCATION_ROLES), validate(spaceAllocationSchema), asyncHandler(async (req, res) => {
+  const { space_name, project_reference, allocated_from, allocated_to } = req.body;
+  const { rows } = await pool.query(
+    `INSERT INTO space_allocations (space_name, project_reference, allocated_from, allocated_to, allocated_by)
+     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    [space_name, project_reference, allocated_from, allocated_to || null, req.user.name]
   );
   res.status(201).json(rows[0]);
 }));

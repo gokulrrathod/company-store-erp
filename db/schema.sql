@@ -491,6 +491,61 @@ CREATE INDEX IF NOT EXISTS idx_stage_inspections_schedule ON stage_inspections(s
 CREATE INDEX IF NOT EXISTS idx_rework_rejections_schedule ON rework_rejections(schedule_id);
 CREATE INDEX IF NOT EXISTS idx_daily_production_entries_schedule ON daily_production_entries(schedule_id);
 
+-- Resource Allocation (Requirements-Production.md §1) — Machinery/Labour are shared masters
+-- (Recommended Decision #6), Space is a fixed set of bays so no separate master is needed
+CREATE TABLE IF NOT EXISTS machines (
+    id SERIAL PRIMARY KEY,
+    machine_name VARCHAR(200) NOT NULL,
+    machine_number VARCHAR(50) NOT NULL UNIQUE,
+    machine_type VARCHAR(100),
+    availability_status VARCHAR(20) NOT NULL DEFAULT 'AVAILABLE' CHECK (availability_status IN ('AVAILABLE', 'ALLOCATED', 'MAINTENANCE')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS labour (
+    id SERIAL PRIMARY KEY,
+    employee_name VARCHAR(200) NOT NULL,
+    department VARCHAR(100) NOT NULL,
+    skill VARCHAR(100),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS machine_allocations (
+    id SERIAL PRIMARY KEY,
+    machine_id INTEGER NOT NULL REFERENCES machines(id),
+    project_reference VARCHAR(200) NOT NULL,
+    allocated_from DATE NOT NULL,
+    allocated_to DATE,
+    allocated_by VARCHAR(100) NOT NULL,
+    released_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS manpower_allocations (
+    id SERIAL PRIMARY KEY,
+    labour_id INTEGER NOT NULL REFERENCES labour(id),
+    project_reference VARCHAR(200) NOT NULL,
+    shift VARCHAR(50) NOT NULL,
+    assigned_job VARCHAR(200) NOT NULL,
+    allocated_from DATE NOT NULL,
+    allocated_to DATE,
+    allocated_by VARCHAR(100) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS space_allocations (
+    id SERIAL PRIMARY KEY,
+    space_name VARCHAR(30) NOT NULL CHECK (space_name IN ('FABRICATION_BAY', 'PAINTING_BAY', 'ASSEMBLY_AREA')),
+    project_reference VARCHAR(200) NOT NULL,
+    allocated_from DATE NOT NULL,
+    allocated_to DATE,
+    allocated_by VARCHAR(100) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_machine_allocations_machine ON machine_allocations(machine_id);
+CREATE INDEX IF NOT EXISTS idx_manpower_allocations_labour ON manpower_allocations(labour_id);
+
 -- =====================================================================
 -- PROJECT / CIVIL (merged module, per Recommended Decision #1)
 -- Source: Requirements-ProjectCivil.md / 2 Civil Work SOP + 8 Project Department SOP

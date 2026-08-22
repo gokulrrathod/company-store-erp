@@ -274,6 +274,45 @@ export const dailyProductionEntrySchema = z.object({
   actual_qty: nonNegativeNumber,
 });
 
+// ===== Resource Allocation (Machinery/Labour shared masters) =====
+
+export const machineSchema = z.object({
+  machine_name: requiredString('Machine name', 200),
+  machine_number: requiredString('Machine number', 50),
+  machine_type: optionalString(100),
+});
+
+export const labourSchema = z.object({
+  employee_name: requiredString('Employee name', 200),
+  department: requiredString('Department', 100),
+  skill: optionalString(100),
+});
+
+export const machineAllocationSchema = z.object({
+  machine_id: z.coerce.number().int().positive('Select a machine'),
+  project_reference: requiredString('Project reference', 200),
+  allocated_from: requiredString('Allocated from', 20),
+  allocated_to: optionalString(20),
+});
+
+export const manpowerAllocationSchema = z.object({
+  labour_id: z.coerce.number().int().positive('Select an employee'),
+  project_reference: requiredString('Project reference', 200),
+  shift: requiredString('Shift', 50),
+  assigned_job: requiredString('Assigned job', 200),
+  allocated_from: requiredString('Allocated from', 20),
+  allocated_to: optionalString(20),
+});
+
+export const spaceAllocationSchema = z.object({
+  space_name: z.enum(['FABRICATION_BAY', 'PAINTING_BAY', 'ASSEMBLY_AREA'], {
+    errorMap: () => ({ message: 'Select a space' }),
+  }),
+  project_reference: requiredString('Project reference', 200),
+  allocated_from: requiredString('Allocated from', 20),
+  allocated_to: optionalString(20),
+});
+
 // ===== Project / Civil =====
 
 export const projectSchema = z.object({
