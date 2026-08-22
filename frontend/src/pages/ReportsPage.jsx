@@ -63,6 +63,34 @@ const REPORTS = [
       { field: 'total_quantity_issued', headerName: 'Total Qty Issued', type: 'numericColumn', minWidth: 160 },
     ],
   },
+  {
+    key: 'vendor-performance',
+    label: 'Vendor Performance',
+    columns: [
+      { field: 'supplier_name', headerName: 'Supplier', minWidth: 200 },
+      { field: 'vendor_status', headerName: 'Status', minWidth: 130 },
+      { field: 'vendor_rating', headerName: 'Rating', type: 'numericColumn', minWidth: 90, valueFormatter: (p) => p.value ?? '—' },
+      { field: 'total_pos', headerName: 'Total POs', type: 'numericColumn', minWidth: 100 },
+      { field: 'total_value', headerName: 'Total Value', type: 'numericColumn', minWidth: 140, valueFormatter: (p) => `₹ ${Number(p.value).toLocaleString('en-IN')}` },
+      { field: 'delivered_count', headerName: 'Delivered', type: 'numericColumn', minWidth: 100 },
+      { field: 'on_time_count', headerName: 'On-Time', type: 'numericColumn', minWidth: 100 },
+      { field: 'late_count', headerName: 'Late', type: 'numericColumn', minWidth: 90 },
+      { field: 'avg_delay_days', headerName: 'Avg Delay (days)', type: 'numericColumn', minWidth: 150, valueFormatter: (p) => p.value ?? '—' },
+    ],
+  },
+  {
+    key: 'delivery-delay',
+    label: 'Delivery Delay',
+    columns: [
+      { field: 'po_number', headerName: 'PO Number', minWidth: 130 },
+      { field: 'supplier_name', headerName: 'Supplier', minWidth: 180 },
+      { field: 'department', headerName: 'Department', minWidth: 130, valueFormatter: (p) => p.value || '—' },
+      { field: 'status', headerName: 'Status', minWidth: 120 },
+      { field: 'expected_delivery_date', headerName: 'Expected', minWidth: 120, valueFormatter: (p) => new Date(p.value).toLocaleDateString() },
+      { field: 'actual_delivery_date', headerName: 'Actual', minWidth: 120, valueFormatter: (p) => (p.value ? new Date(p.value).toLocaleDateString() : 'Not yet delivered') },
+      { field: 'days_delayed', headerName: 'Days Delayed', type: 'numericColumn', minWidth: 130 },
+    ],
+  },
 ];
 
 export default function ReportsPage() {

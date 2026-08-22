@@ -77,4 +77,56 @@ router.get('/department-wise-consumption', asyncHandler(async (req, res) => {
   res.json(rows);
 }));
 
+// Vendor Performance Report (Requirements-Purchase.md §7): PO volume/value and on-time delivery
+// rate per supplier, derived from expected_delivery_date vs actual_delivery_date — not a manual score
+router.get('/vendor-performance', asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT s.id AS supplier_id, s.name AS supplier_name, s.vendor_rating, s.vendor_status,
+            COUNT(po.id) AS total_pos,
+            COALESCE(SUM(po.total_value), 0) AS total_value,
+            COUNT(po.id) FILTER (WHERE po.actual_delivery_date IS NOT NULL) AS delivered_count,
+            COUNT(po.id) FILTER (
+              WHERE po.actual_delivery_date IS NOT NULL AND po.expected_delivery_date IS NOT NULL
+                AND po.actual_delivery_date <= po.expected_delivery_date
+            ) AS on_time_count,
+            COUNT(po.id) FILTER (
+              WHERE po.actual_delivery_date IS NOT NULL AND po.expected_delivery_date IS NOT NULL
+                AND po.actual_delivery_date > po.expected_delivery_date
+            ) AS late_count,
+            ROUND(AVG(
+              CASE WHEN po.actual_delivery_date IS NOT NULL AND po.expected_delivery_date IS NOT NULL
+                THEN (po.actual_delivery_date - po.expected_delivery_date) END
+            )::numeric, 1) AS avg_delay_days
+     FROM suppliers s
+     LEFT JOIN purchase_orders po ON po.supplier_id = s.id
+     GROUP BY s.id, s.name, s.vendor_rating, s.vendor_status
+     ORDER BY s.name`
+  );
+  res.json(rows);
+}));
+
+// Delivery Delay Report (Requirements-Purchase.md §7): POs delivered late, or still outstanding
+// past their expected date — days_delayed is computed, never a manually entered field
+router.get('/delivery-delay', asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT po.id, po.po_number, s.name AS supplier_name, po.department, po.project_id,
+            po.expected_delivery_date, po.actual_delivery_date, po.status,
+            CASE
+              WHEN po.actual_delivery_date IS NOT NULL AND po.actual_delivery_date > po.expected_delivery_date
+                THEN (po.actual_delivery_date - po.expected_delivery_date)
+              WHEN po.actual_delivery_date IS NULL AND po.expected_delivery_date < CURRENT_DATE
+                THEN (CURRENT_DATE - po.expected_delivery_date)
+            END AS days_delayed
+     FROM purchase_orders po
+     JOIN suppliers s ON s.id = po.supplier_id
+     WHERE po.expected_delivery_date IS NOT NULL
+       AND (
+         (po.actual_delivery_date IS NOT NULL AND po.actual_delivery_date > po.expected_delivery_date)
+         OR (po.actual_delivery_date IS NULL AND po.expected_delivery_date < CURRENT_DATE)
+       )
+     ORDER BY days_delayed DESC`
+  );
+  res.json(rows);
+}));
+
 export default router;
