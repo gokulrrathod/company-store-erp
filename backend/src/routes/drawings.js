@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { pool } from '../db/pool.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { drawingSchema, checklistSchema, bomLineSchema, ecnSchema, ecnApprovalSchema } from '../validation/schemas.js';
+import { drawingSchema, checklistSchema, bomLineSchema, ecnSchema, ecnApprovalSchema, designInputSheetSchema, designInputSheetStatusSchema } from '../validation/schemas.js';
 import { CHECKLIST_ITEMS } from '../config/designChecklist.js';
 import { ROLES } from '../config/auth.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
@@ -39,7 +39,76 @@ router.get('/:id', asyncHandler(async (req, res) => {
 
   const { rows: bomLines } = await pool.query(`SELECT * FROM bom_lines WHERE drawing_id = $1 ORDER BY item_no`, [req.params.id]);
   const { rows: ecns } = await pool.query(`SELECT * FROM engineering_change_notices WHERE drawing_id = $1 ORDER BY created_at DESC`, [req.params.id]);
-  res.json({ ...rows[0], bom_lines: bomLines, ecns });
+  const { rows: inputSheetRows } = await pool.query(
+    `SELECT dis.*, d.drawing_number AS previous_reference_drawing_number
+     FROM design_input_sheets dis
+     LEFT JOIN drawings d ON d.id = dis.previous_reference_drawing_id
+     WHERE dis.drawing_id = $1`,
+    [req.params.id]
+  );
+  res.json({ ...rows[0], bom_lines: bomLines, ecns, input_sheet: inputSheetRows[0] || null });
+}));
+
+// Step 3 of the Design pipeline (Requirements-Design.md §3) - the documented basis
+// downstream Design Calculations must trace back to. One per drawing.
+router.post('/:id/input-sheet', requireRole(ROLES.DESIGN_ENGINEER, ROLES.ADMIN), validate(designInputSheetSchema), asyncHandler(async (req, res) => {
+  const { rows: drawingRows } = await pool.query(`SELECT id FROM drawings WHERE id = $1`, [req.params.id]);
+  if (!drawingRows.length) return res.status(404).json({ error: 'Drawing not found' });
+
+  const {
+    customer_specification, process_data, applicable_standards, material_specification,
+    corrosion_allowance, design_pressure, previous_reference_drawing_id, design_notes,
+  } = req.body;
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO design_input_sheets
+         (drawing_id, customer_specification, process_data, applicable_standards, material_specification,
+          corrosion_allowance, design_pressure, previous_reference_drawing_id, design_notes, prepared_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      [req.params.id, customer_specification || null, process_data || null, applicable_standards || null,
+        material_specification || null, corrosion_allowance ?? null, design_pressure ?? null,
+        previous_reference_drawing_id || null, design_notes || null, req.user.name]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    if (err.code === '23505') return res.status(400).json({ error: 'This drawing already has a Design Input Sheet' });
+    throw err;
+  }
+}));
+
+router.patch('/:id/input-sheet', requireRole(ROLES.DESIGN_ENGINEER, ROLES.ADMIN), validate(designInputSheetSchema), asyncHandler(async (req, res) => {
+  const {
+    customer_specification, process_data, applicable_standards, material_specification,
+    corrosion_allowance, design_pressure, previous_reference_drawing_id, design_notes,
+  } = req.body;
+  const { rows } = await pool.query(
+    `UPDATE design_input_sheets SET
+       customer_specification = $1, process_data = $2, applicable_standards = $3, material_specification = $4,
+       corrosion_allowance = $5, design_pressure = $6, previous_reference_drawing_id = $7, design_notes = $8
+     WHERE drawing_id = $9 AND status = 'DRAFT' RETURNING *`,
+    [customer_specification || null, process_data || null, applicable_standards || null, material_specification || null,
+      corrosion_allowance ?? null, design_pressure ?? null, previous_reference_drawing_id || null, design_notes || null, req.params.id]
+  );
+  if (!rows.length) return res.status(400).json({ error: 'Design Input Sheet not found or already Completed' });
+  res.json(rows[0]);
+}));
+
+// AC1: cannot be marked Completed without Customer Specification and Applicable Standards
+router.patch('/:id/input-sheet/status', requireRole(ROLES.DESIGN_ENGINEER, ROLES.ADMIN), validate(designInputSheetStatusSchema), asyncHandler(async (req, res) => {
+  const { rows: sheetRows } = await pool.query(`SELECT * FROM design_input_sheets WHERE drawing_id = $1`, [req.params.id]);
+  if (!sheetRows.length) return res.status(404).json({ error: 'Design Input Sheet not found' });
+  const sheet = sheetRows[0];
+
+  if (req.body.status === 'COMPLETED') {
+    if (!sheet.customer_specification?.trim() || !sheet.applicable_standards?.trim()) {
+      return res.status(400).json({ error: 'Customer Specification and Applicable Standards are required before marking Completed' });
+    }
+  }
+  const { rows } = await pool.query(
+    `UPDATE design_input_sheets SET status = $1 WHERE drawing_id = $2 RETURNING *`,
+    [req.body.status, req.params.id]
+  );
+  res.json(rows[0]);
 }));
 
 router.post('/', requireRole(ROLES.DESIGN_ENGINEER, ROLES.ADMIN), validate(drawingSchema), asyncHandler(async (req, res, next) => {

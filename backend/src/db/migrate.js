@@ -139,6 +139,30 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_attachments_entity ON attachments(entity_type, entity_id);
     `,
   },
+  {
+    name: '007_design_input_sheet',
+    sql: `
+      CREATE TABLE IF NOT EXISTS design_input_sheets (
+        id SERIAL PRIMARY KEY,
+        drawing_id INTEGER NOT NULL UNIQUE REFERENCES drawings(id),
+        customer_specification TEXT,
+        process_data TEXT,
+        applicable_standards TEXT,
+        material_specification TEXT,
+        corrosion_allowance NUMERIC(10,2),
+        design_pressure NUMERIC(10,2),
+        previous_reference_drawing_id INTEGER REFERENCES drawings(id),
+        design_notes TEXT,
+        status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'COMPLETED')),
+        prepared_by VARCHAR(100) NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_design_input_sheets_drawing ON design_input_sheets(drawing_id);
+
+      DROP TRIGGER IF EXISTS audit_design_input_sheets ON design_input_sheets;
+      CREATE TRIGGER audit_design_input_sheets AFTER UPDATE ON design_input_sheets FOR EACH ROW EXECUTE FUNCTION audit_log_row_changes();
+    `,
+  },
 ];
 
 async function ensureMigrationsTable(client) {

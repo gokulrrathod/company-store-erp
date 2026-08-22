@@ -209,6 +209,21 @@ export const drawingSchema = z.object({
   design_head: optionalString(100),
 });
 
+export const designInputSheetSchema = z.object({
+  customer_specification: optionalString(2000),
+  process_data: optionalString(2000),
+  applicable_standards: optionalString(1000),
+  material_specification: optionalString(500),
+  corrosion_allowance: nonNegativeNumber.nullable().optional(),
+  design_pressure: nonNegativeNumber.nullable().optional(),
+  previous_reference_drawing_id: z.coerce.number().int().positive().nullable().optional(),
+  design_notes: optionalString(2000),
+});
+
+export const designInputSheetStatusSchema = z.object({
+  status: z.enum(['DRAFT', 'COMPLETED'], { errorMap: () => ({ message: 'Status must be DRAFT or COMPLETED' }) }),
+});
+
 export const checklistSchema = z.object({
   checklist: z.record(z.boolean()),
   checker_remarks: optionalString(500),

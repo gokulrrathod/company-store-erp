@@ -192,6 +192,17 @@ export const ecnSchema = z.object({
   remarks: optionalString(500),
 });
 
+export const designInputSheetSchema = z.object({
+  customer_specification: optionalString(2000),
+  process_data: optionalString(2000),
+  applicable_standards: optionalString(1000),
+  material_specification: optionalString(500),
+  corrosion_allowance: z.union([nonNegativeNumber, z.literal('')]).optional(),
+  design_pressure: z.union([nonNegativeNumber, z.literal('')]).optional(),
+  previous_reference_drawing_id: z.union([z.string(), z.number()]).optional().nullable(),
+  design_notes: optionalString(2000),
+});
+
 // ===== Production =====
 
 export const productionPlanSchema = z.object({

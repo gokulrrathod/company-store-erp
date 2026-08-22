@@ -11,7 +11,8 @@ import AddIcon from '@mui/icons-material/Add';
 import DataTable from '../components/DataTable.jsx';
 import AttachmentsPanel from '../components/AttachmentsPanel.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
-import { bomLineSchema, ecnSchema } from '../validation/schemas.js';
+import RHFSelect from '../components/form/RHFSelect.jsx';
+import { bomLineSchema, ecnSchema, designInputSheetSchema } from '../validation/schemas.js';
 import { CHECKLIST_ITEMS } from '../config/designChecklist.js';
 import { applyServerErrors } from '../utils/applyServerErrors.js';
 import { api } from '../api/client.js';
@@ -42,6 +43,7 @@ export default function DrawingDetailPage() {
   const [ecnOpen, setEcnOpen] = useState(false);
   const [checklist, setChecklist] = useState({});
   const [checkerRemarks, setCheckerRemarks] = useState('');
+  const [allDrawings, setAllDrawings] = useState([]);
 
   const load = async () => {
     const { data } = await api.get(`/drawings/${id}`);
@@ -51,6 +53,17 @@ export default function DrawingDetailPage() {
   };
 
   useEffect(() => { load(); }, [id]);
+  useEffect(() => {
+    api.get('/drawings').then((res) => setAllDrawings(res.data)).catch(() => setAllDrawings([]));
+  }, []);
+
+  const inputSheetForm = useForm({
+    resolver: zodResolver(designInputSheetSchema),
+    defaultValues: {
+      customer_specification: '', process_data: '', applicable_standards: '', material_specification: '',
+      corrosion_allowance: '', design_pressure: '', previous_reference_drawing_id: '', design_notes: '',
+    },
+  });
 
   const bomForm = useForm({
     resolver: zodResolver(bomLineSchema),
@@ -64,6 +77,52 @@ export default function DrawingDetailPage() {
   const isEngineer = ['DESIGN_ENGINEER', 'ADMIN'].includes(user?.role);
   const isChecker = ['CHECKER', 'ADMIN'].includes(user?.role);
   const isDesignHead = ['DESIGN_HEAD', 'ADMIN'].includes(user?.role);
+
+  useEffect(() => {
+    if (drawing?.input_sheet) {
+      const s = drawing.input_sheet;
+      inputSheetForm.reset({
+        customer_specification: s.customer_specification || '',
+        process_data: s.process_data || '',
+        applicable_standards: s.applicable_standards || '',
+        material_specification: s.material_specification || '',
+        corrosion_allowance: s.corrosion_allowance ?? '',
+        design_pressure: s.design_pressure ?? '',
+        previous_reference_drawing_id: s.previous_reference_drawing_id || '',
+        design_notes: s.design_notes || '',
+      });
+    }
+  }, [drawing?.input_sheet]);
+
+  const createInputSheet = async (values) => {
+    setActionError('');
+    try {
+      await api.post(`/drawings/${id}/input-sheet`, values);
+      load();
+    } catch (err) {
+      applyServerErrors(err, inputSheetForm.setError, setActionError);
+    }
+  };
+
+  const saveInputSheet = async (values) => {
+    setActionError('');
+    try {
+      await api.patch(`/drawings/${id}/input-sheet`, values);
+      load();
+    } catch (err) {
+      applyServerErrors(err, inputSheetForm.setError, setActionError);
+    }
+  };
+
+  const markInputSheetCompleted = async () => {
+    setActionError('');
+    try {
+      await api.patch(`/drawings/${id}/input-sheet/status`, { status: 'COMPLETED' });
+      load();
+    } catch (err) {
+      setActionError(err.response?.data?.error || 'Failed to mark completed');
+    }
+  };
 
   const submitForChecking = async () => {
     setActionError('');
@@ -198,6 +257,81 @@ export default function DrawingDetailPage() {
       </Typography>
 
       {actionError && <Alert severity="error" sx={{ mt: 2 }}>{actionError}</Alert>}
+
+      <Section title="Design Input Sheet">
+        {!drawing.input_sheet ? (
+          isEngineer ? (
+            <>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Documents the basis for downstream Design Calculations — Customer Specification and Applicable Standards are required before this can be marked Completed.
+              </Alert>
+              <Grid container spacing={2}>
+                <Grid item xs={12}><RHFTextField name="customer_specification" control={inputSheetForm.control} label="Customer Specification" multiline rows={2} /></Grid>
+                <Grid item xs={12} sm={6}><RHFTextField name="process_data" control={inputSheetForm.control} label="Process Data" multiline rows={2} /></Grid>
+                <Grid item xs={12} sm={6}><RHFTextField name="applicable_standards" control={inputSheetForm.control} label="Applicable Standards" multiline rows={2} /></Grid>
+                <Grid item xs={12} sm={6}><RHFTextField name="material_specification" control={inputSheetForm.control} label="Material Specification" /></Grid>
+                <Grid item xs={6} sm={3}><RHFTextField name="corrosion_allowance" control={inputSheetForm.control} label="Corrosion Allowance (mm)" type="number" /></Grid>
+                <Grid item xs={6} sm={3}><RHFTextField name="design_pressure" control={inputSheetForm.control} label="Design Pressure" type="number" /></Grid>
+                <Grid item xs={12} sm={6}>
+                  <RHFSelect
+                    name="previous_reference_drawing_id" control={inputSheetForm.control} label="Previous Reference Drawing (optional)"
+                    options={allDrawings.filter((d) => d.id !== drawing.id)} getLabel={(d) => d.drawing_number} getValue={(d) => d.id}
+                  />
+                </Grid>
+                <Grid item xs={12}><RHFTextField name="design_notes" control={inputSheetForm.control} label="Design Notes" multiline rows={2} /></Grid>
+              </Grid>
+              <Button variant="contained" sx={{ mt: 2 }} onClick={inputSheetForm.handleSubmit(createInputSheet)}>Create Design Input Sheet</Button>
+            </>
+          ) : (
+            <Typography variant="body2" color="text.secondary">No Design Input Sheet created yet.</Typography>
+          )
+        ) : (
+          <>
+            <Stack direction="row" justifyContent="flex-end" sx={{ mb: 1 }}>
+              <Chip size="small" label={drawing.input_sheet.status} color={drawing.input_sheet.status === 'COMPLETED' ? 'success' : 'default'} />
+            </Stack>
+            {isEngineer && drawing.input_sheet.status === 'DRAFT' ? (
+              <>
+                <Grid container spacing={2}>
+                  <Grid item xs={12}><RHFTextField name="customer_specification" control={inputSheetForm.control} label="Customer Specification" multiline rows={2} /></Grid>
+                  <Grid item xs={12} sm={6}><RHFTextField name="process_data" control={inputSheetForm.control} label="Process Data" multiline rows={2} /></Grid>
+                  <Grid item xs={12} sm={6}><RHFTextField name="applicable_standards" control={inputSheetForm.control} label="Applicable Standards" multiline rows={2} /></Grid>
+                  <Grid item xs={12} sm={6}><RHFTextField name="material_specification" control={inputSheetForm.control} label="Material Specification" /></Grid>
+                  <Grid item xs={6} sm={3}><RHFTextField name="corrosion_allowance" control={inputSheetForm.control} label="Corrosion Allowance (mm)" type="number" /></Grid>
+                  <Grid item xs={6} sm={3}><RHFTextField name="design_pressure" control={inputSheetForm.control} label="Design Pressure" type="number" /></Grid>
+                  <Grid item xs={12} sm={6}>
+                    <RHFSelect
+                      name="previous_reference_drawing_id" control={inputSheetForm.control} label="Previous Reference Drawing (optional)"
+                      options={allDrawings.filter((d) => d.id !== drawing.id)} getLabel={(d) => d.drawing_number} getValue={(d) => d.id}
+                    />
+                  </Grid>
+                  <Grid item xs={12}><RHFTextField name="design_notes" control={inputSheetForm.control} label="Design Notes" multiline rows={2} /></Grid>
+                </Grid>
+                <Stack direction="row" spacing={1.5} sx={{ mt: 2 }}>
+                  <Button variant="outlined" onClick={inputSheetForm.handleSubmit(saveInputSheet)}>Save</Button>
+                  <Button variant="contained" color="success" onClick={markInputSheetCompleted}>Mark Completed</Button>
+                </Stack>
+              </>
+            ) : (
+              <Grid container spacing={2}>
+                <Grid item xs={12}><Typography variant="caption" color="text.secondary">Customer Specification</Typography><Typography variant="body2">{drawing.input_sheet.customer_specification || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography variant="caption" color="text.secondary">Process Data</Typography><Typography variant="body2">{drawing.input_sheet.process_data || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography variant="caption" color="text.secondary">Applicable Standards</Typography><Typography variant="body2">{drawing.input_sheet.applicable_standards || '—'}</Typography></Grid>
+                <Grid item xs={12} sm={6}><Typography variant="caption" color="text.secondary">Material Specification</Typography><Typography variant="body2">{drawing.input_sheet.material_specification || '—'}</Typography></Grid>
+                <Grid item xs={6} sm={3}><Typography variant="caption" color="text.secondary">Corrosion Allowance</Typography><Typography variant="body2">{drawing.input_sheet.corrosion_allowance ?? '—'}</Typography></Grid>
+                <Grid item xs={6} sm={3}><Typography variant="caption" color="text.secondary">Design Pressure</Typography><Typography variant="body2">{drawing.input_sheet.design_pressure ?? '—'}</Typography></Grid>
+                {drawing.input_sheet.previous_reference_drawing_number && (
+                  <Grid item xs={12} sm={6}><Typography variant="caption" color="text.secondary">Previous Reference Drawing</Typography><Typography variant="body2">{drawing.input_sheet.previous_reference_drawing_number}</Typography></Grid>
+                )}
+                <Grid item xs={12}><Typography variant="caption" color="text.secondary">Design Notes</Typography><Typography variant="body2">{drawing.input_sheet.design_notes || '—'}</Typography></Grid>
+              </Grid>
+            )}
+            <Box sx={{ mt: 2 }}>
+              <AttachmentsPanel entityType="design_input_sheet" entityId={drawing.input_sheet.id} canUpload={isEngineer && drawing.input_sheet.status === 'DRAFT'} />
+            </Box>
+          </>
+        )}
+      </Section>
 
       <Section title="Bill of Materials (BOM)">
         <DataTable rowData={drawing.bom_lines} columnDefs={bomColumnDefs} pagination={false} height={Math.max(160, drawing.bom_lines.length * 56 + 60)} getRowId={(p) => String(p.data.id)} emptyMessage="No BOM lines yet." />

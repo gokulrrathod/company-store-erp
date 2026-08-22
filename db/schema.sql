@@ -318,6 +318,26 @@ CREATE TABLE IF NOT EXISTS drawings (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Design Input Sheet: the documented basis (customer spec, standards, process
+-- data) a Design Calculation must trace back to (Requirements-Design.md §1/§3)
+CREATE TABLE IF NOT EXISTS design_input_sheets (
+    id SERIAL PRIMARY KEY,
+    drawing_id INTEGER NOT NULL UNIQUE REFERENCES drawings(id),
+    customer_specification TEXT,
+    process_data TEXT,
+    applicable_standards TEXT,
+    material_specification TEXT,
+    corrosion_allowance NUMERIC(10,2),
+    design_pressure NUMERIC(10,2),
+    previous_reference_drawing_id INTEGER REFERENCES drawings(id),
+    design_notes TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'COMPLETED')),
+    prepared_by VARCHAR(100) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_design_input_sheets_drawing ON design_input_sheets(drawing_id);
+
 -- BOM lines feed Production's BOM consumption and Store's MR chain (shared entity, read cross-module)
 CREATE TABLE IF NOT EXISTS bom_lines (
     id SERIAL PRIMARY KEY,
