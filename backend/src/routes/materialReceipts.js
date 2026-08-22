@@ -125,6 +125,13 @@ router.post('/:id/approve', requireRole(ROLES.STORE_MANAGER, ROLES.ADMIN), async
         `UPDATE items SET quantity = quantity + $1 WHERE id = $2`,
         [line.quantity_received, line.item_id]
       );
+      // Partially-accepted stock is physically received but flagged unusable until
+      // Store reconciles the damage — there's no split accepted/damaged quantity at
+      // inspection, so the whole line counts against damaged_stock (Store §1 Inventory
+      // Item entity: Damaged Stock is tracked separately from usable Available Stock).
+      if (line.inspection_status === 'PARTIALLY_ACCEPTED') {
+        await client.query(`UPDATE items SET damaged_stock = damaged_stock + $1 WHERE id = $2`, [line.quantity_received, line.item_id]);
+      }
       await addBatch(client, {
         itemId: line.item_id,
         batchNumber: line.batch_number || `GRN-${receipt.grn_number}`,

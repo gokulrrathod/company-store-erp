@@ -18,6 +18,8 @@ export default function InventoryPage() {
     { field: 'category_name', headerName: 'Category', minWidth: 130 },
     { field: 'quantity', headerName: 'Quantity', type: 'numericColumn', minWidth: 110 },
     { field: 'available_stock', headerName: 'Available Stock', type: 'numericColumn', minWidth: 140 },
+    { field: 'damaged_stock', headerName: 'Damaged', type: 'numericColumn', minWidth: 110, valueFormatter: (p) => Number(p.value) > 0 ? p.value : '—' },
+    { field: 'rejected_stock', headerName: 'Rejected', type: 'numericColumn', minWidth: 110, valueFormatter: (p) => Number(p.value) > 0 ? p.value : '—' },
     { field: 'unit', headerName: 'Unit', minWidth: 80 },
     { field: 'reorder_level', headerName: 'Reorder Level', type: 'numericColumn', minWidth: 130 },
     { field: 'storage_location', headerName: 'Storage Location', minWidth: 180, valueFormatter: (p) => p.value || '—' },

@@ -13,7 +13,7 @@ router.use(requireAuth);
 const SELECT_ITEM_FIELDS = `
   i.*,
   c.name AS category_name,
-  (i.quantity - i.reserved_stock - i.damaged_stock) AS available_stock,
+  (i.quantity - i.reserved_stock - i.damaged_stock - i.rejected_stock) AS available_stock,
   i.quantity AS closing_balance,
   (i.quantity * i.unit_rate) AS valuation
 `;

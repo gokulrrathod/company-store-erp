@@ -41,6 +41,9 @@ router.post('/', requireRole(ROLES.QUALITY, ROLES.STORE_MANAGER, ROLES.ADMIN), v
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
       [rejection_number, supplier_id || null, item_id, batch_number || null, quantity, reason, qc_remarks || null, action_taken, req.user.name, disposal_date || null]
     );
+    // Rejected material sits in a separate tracked bucket, excluded from available_stock
+    // until its disposition (return/scrap/rework/replacement) is carried out.
+    await client.query(`UPDATE items SET rejected_stock = rejected_stock + $1 WHERE id = $2`, [quantity, item_id]);
     await client.query('COMMIT');
     res.status(201).json(rows[0]);
   } catch (err) {
