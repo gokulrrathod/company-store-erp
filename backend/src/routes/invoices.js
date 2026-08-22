@@ -53,7 +53,12 @@ router.get('/:id', asyncHandler(async (req, res) => {
   if (!rows.length) return res.status(404).json({ error: 'Invoice not found' });
   const [withBal] = await withBalance(rows);
   const { rows: payments } = await pool.query(`SELECT * FROM payments WHERE invoice_id = $1 ORDER BY created_at DESC`, [req.params.id]);
-  res.json({ ...withBal, payments });
+  const { rows: lines } = await pool.query(
+    `SELECT il.*, i.code AS item_code FROM invoice_lines il LEFT JOIN items i ON i.id = il.item_id
+     WHERE il.invoice_id = $1 ORDER BY il.id`,
+    [req.params.id]
+  );
+  res.json({ ...withBal, payments, lines });
 }));
 
 // Eligible GRNs for a given PO: APPROVED status only (three-way match gate).
@@ -65,8 +70,19 @@ router.get('/eligible-grns/:poId', asyncHandler(async (req, res) => {
   res.json(rows);
 }));
 
+async function insertLines(client, invoiceId, lines) {
+  for (const line of lines) {
+    const amount = Number(line.quantity) * Number(line.rate);
+    await client.query(
+      `INSERT INTO invoice_lines (invoice_id, item_id, description, hsn_sac_code, quantity, rate, amount)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [invoiceId, line.item_id || null, line.description, line.hsn_sac_code || null, line.quantity, line.rate, amount]
+    );
+  }
+}
+
 router.post('/purchase', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(purchaseInvoiceSchema), asyncHandler(async (req, res) => {
-  const { party_name, gstin, purchase_order_id, material_receipt_id, taxable_amount, gst_percent, due_date } = req.body;
+  const { party_name, gstin, purchase_order_id, material_receipt_id, gst_percent, due_date, lines } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -78,8 +94,9 @@ router.post('/purchase', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(purc
     if (grnRows[0].status !== 'APPROVED') throw new Error('GRN must be Approved (post-inspection) before invoice booking — three-way match required');
 
     const invoice_number = await nextInvoiceNumber(client, 'PURCHASE', 'PINV');
-    const gst_amount = Number(taxable_amount) * (Number(gst_percent) / 100);
-    const total_amount = Number(taxable_amount) + gst_amount;
+    const taxable_amount = lines.reduce((sum, l) => sum + Number(l.quantity) * Number(l.rate), 0);
+    const gst_amount = taxable_amount * (Number(gst_percent) / 100);
+    const total_amount = taxable_amount + gst_amount;
 
     const { rows } = await client.query(
       `INSERT INTO invoices
@@ -89,6 +106,7 @@ router.post('/purchase', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(purc
       [invoice_number, party_name, gstin || null, purchase_order_id, material_receipt_id,
         taxable_amount, gst_percent, gst_amount, total_amount, due_date || null, req.user.name]
     );
+    await insertLines(client, rows[0].id, lines);
     await client.query('COMMIT');
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -101,7 +119,7 @@ router.post('/purchase', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(purc
 }));
 
 router.post('/sales', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(salesInvoiceSchema), asyncHandler(async (req, res) => {
-  const { sales_order_id, gstin, taxable_amount, gst_percent, due_date } = req.body;
+  const { sales_order_id, gstin, gst_percent, due_date, lines } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -113,8 +131,9 @@ router.post('/sales', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(salesIn
     if (!soRows[0].dc_number) throw new Error('Sales order has no Delivery Challan number');
 
     const invoice_number = await nextInvoiceNumber(client, 'SALES', 'SINV');
-    const gst_amount = Number(taxable_amount) * (Number(gst_percent) / 100);
-    const total_amount = Number(taxable_amount) + gst_amount;
+    const taxable_amount = lines.reduce((sum, l) => sum + Number(l.quantity) * Number(l.rate), 0);
+    const gst_amount = taxable_amount * (Number(gst_percent) / 100);
+    const total_amount = taxable_amount + gst_amount;
 
     const { rows } = await client.query(
       `INSERT INTO invoices
@@ -124,6 +143,7 @@ router.post('/sales', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(salesIn
       [invoice_number, soRows[0].customer_name, gstin || null, sales_order_id,
         taxable_amount, gst_percent, gst_amount, total_amount, due_date || null, req.user.name]
     );
+    await insertLines(client, rows[0].id, lines);
     await client.query('COMMIT');
     res.status(201).json(rows[0]);
   } catch (err) {

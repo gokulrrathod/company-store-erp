@@ -368,22 +368,30 @@ export const insuranceRecordSchema = z.object({
 
 // ===== Accounts =====
 
+const invoiceLineSchema = z.object({
+  item_id: z.coerce.number().int().positive().nullable().optional(),
+  description: requiredString('Description', 300),
+  hsn_sac_code: optionalString(20),
+  quantity: positiveNumber,
+  rate: nonNegativeNumber,
+});
+
 export const purchaseInvoiceSchema = z.object({
   party_name: requiredString('Party name', 200),
   gstin: optionalString(20),
   purchase_order_id: z.coerce.number().int().positive('Select a purchase order'),
   material_receipt_id: z.coerce.number().int().positive('Select a GRN'),
-  taxable_amount: positiveNumber,
   gst_percent: nonNegativeNumber,
   due_date: optionalString(20),
+  lines: z.array(invoiceLineSchema).min(1, 'Add at least one line item'),
 });
 
 export const salesInvoiceSchema = z.object({
   sales_order_id: z.coerce.number().int().positive('Select a sales order'),
   gstin: optionalString(20),
-  taxable_amount: positiveNumber,
   gst_percent: nonNegativeNumber,
   due_date: optionalString(20),
+  lines: z.array(invoiceLineSchema).min(1, 'Add at least one line item'),
 });
 
 export const invoicePaymentSchema = z.object({

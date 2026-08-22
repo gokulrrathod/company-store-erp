@@ -37,7 +37,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
   if (!poRows.length) return res.status(404).json({ error: 'Purchase order not found' });
 
   const { rows: lines } = await pool.query(
-    `SELECT pl.*, i.code AS item_code, i.name AS item_name, mr.requisition_number
+    `SELECT pl.*, i.code AS item_code, i.name AS item_name, i.unit_rate, mr.requisition_number
      FROM po_lines pl
      JOIN items i ON i.id = pl.item_id
      LEFT JOIN material_requests mr ON mr.id = pl.mr_id

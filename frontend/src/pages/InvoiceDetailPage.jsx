@@ -85,6 +85,25 @@ export default function InvoiceDetailPage() {
         </Grid>
       </Section>
 
+      <Section title="Line Items">
+        <Grid container spacing={1} sx={{ fontWeight: 700, mb: 1 }}>
+          <Grid item xs={3}><Typography variant="caption" color="text.secondary">Description</Typography></Grid>
+          <Grid item xs={2}><Typography variant="caption" color="text.secondary">HSN/SAC</Typography></Grid>
+          <Grid item xs={2}><Typography variant="caption" color="text.secondary">Qty</Typography></Grid>
+          <Grid item xs={2}><Typography variant="caption" color="text.secondary">Rate</Typography></Grid>
+          <Grid item xs={3}><Typography variant="caption" color="text.secondary">Amount</Typography></Grid>
+        </Grid>
+        {(invoice.lines || []).map((line) => (
+          <Grid container spacing={1} key={line.id} sx={{ py: 0.5 }}>
+            <Grid item xs={3}><Typography variant="body2">{line.item_code ? `${line.item_code} — ` : ''}{line.description}</Typography></Grid>
+            <Grid item xs={2}><Typography variant="body2">{line.hsn_sac_code || '—'}</Typography></Grid>
+            <Grid item xs={2}><Typography variant="body2">{Number(line.quantity)}</Typography></Grid>
+            <Grid item xs={2}><Typography variant="body2">₹ {Number(line.rate).toLocaleString('en-IN')}</Typography></Grid>
+            <Grid item xs={3}><Typography variant="body2">₹ {Number(line.amount).toLocaleString('en-IN')}</Typography></Grid>
+          </Grid>
+        ))}
+      </Section>
+
       <Section title="Payment History">
         {!invoice.payments.length && <Typography variant="body2" color="text.secondary">No payments recorded yet.</Typography>}
         {invoice.payments.map((p, idx) => (

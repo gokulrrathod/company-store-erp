@@ -579,6 +579,18 @@ CREATE TABLE IF NOT EXISTS payments (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS invoice_lines (
+    id SERIAL PRIMARY KEY,
+    invoice_id INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+    item_id INTEGER REFERENCES items(id),
+    description VARCHAR(300) NOT NULL,
+    hsn_sac_code VARCHAR(20),
+    quantity NUMERIC(12,2) NOT NULL CHECK (quantity > 0),
+    rate NUMERIC(12,2) NOT NULL CHECK (rate >= 0),
+    amount NUMERIC(14,2) NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_invoices_po ON invoices(purchase_order_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_so ON invoices(sales_order_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_lines_invoice ON invoice_lines(invoice_id);
 CREATE INDEX IF NOT EXISTS idx_payments_invoice ON payments(invoice_id);

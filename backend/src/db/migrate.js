@@ -98,6 +98,30 @@ const MIGRATIONS = [
       $trig$;
     `,
   },
+  {
+    name: '005_itemize_invoices',
+    sql: `
+      CREATE TABLE IF NOT EXISTS invoice_lines (
+        id SERIAL PRIMARY KEY,
+        invoice_id INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+        item_id INTEGER REFERENCES items(id),
+        description VARCHAR(300) NOT NULL,
+        hsn_sac_code VARCHAR(20),
+        quantity NUMERIC(12,2) NOT NULL CHECK (quantity > 0),
+        rate NUMERIC(12,2) NOT NULL CHECK (rate >= 0),
+        amount NUMERIC(14,2) NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_invoice_lines_invoice ON invoice_lines(invoice_id);
+
+      INSERT INTO invoice_lines (invoice_id, description, quantity, rate, amount)
+      SELECT id, 'Migrated invoice (booked before line-item tracking)', 1, taxable_amount, taxable_amount
+      FROM invoices
+      WHERE NOT EXISTS (SELECT 1 FROM invoice_lines WHERE invoice_lines.invoice_id = invoices.id);
+
+      DROP TRIGGER IF EXISTS audit_invoice_lines ON invoice_lines;
+      CREATE TRIGGER audit_invoice_lines AFTER UPDATE ON invoice_lines FOR EACH ROW EXECUTE FUNCTION audit_log_row_changes();
+    `,
+  },
 ];
 
 async function ensureMigrationsTable(client) {
