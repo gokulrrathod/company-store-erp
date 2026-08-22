@@ -288,6 +288,65 @@ const MIGRATIONS = [
       CREATE TRIGGER audit_machines AFTER UPDATE ON machines FOR EACH ROW EXECUTE FUNCTION audit_log_row_changes();
     `,
   },
+  {
+    name: '012_civil_execution',
+    sql: `
+      CREATE TABLE IF NOT EXISTS rate_charts (
+        id SERIAL PRIMARY KEY,
+        work_description VARCHAR(300) NOT NULL,
+        unit VARCHAR(20) NOT NULL,
+        standard_rate NUMERIC(12,2) NOT NULL CHECK (standard_rate > 0),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS civil_executions (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL UNIQUE REFERENCES projects(id),
+        estimated_cost NUMERIC(14,2) NOT NULL DEFAULT 0,
+        created_by VARCHAR(100) NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS boq_lines (
+        id SERIAL PRIMARY KEY,
+        civil_execution_id INTEGER NOT NULL REFERENCES civil_executions(id),
+        item_no VARCHAR(20) NOT NULL,
+        description VARCHAR(300) NOT NULL,
+        unit VARCHAR(20) NOT NULL,
+        quantity NUMERIC(12,2) NOT NULL CHECK (quantity > 0),
+        rate_chart_id INTEGER REFERENCES rate_charts(id),
+        rate NUMERIC(12,2) NOT NULL CHECK (rate > 0),
+        amount NUMERIC(14,2) NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS quantity_sheet_lines (
+        id SERIAL PRIMARY KEY,
+        civil_execution_id INTEGER NOT NULL REFERENCES civil_executions(id),
+        description VARCHAR(300) NOT NULL,
+        unit VARCHAR(20) NOT NULL,
+        quantity NUMERIC(12,2) NOT NULL CHECK (quantity > 0),
+        remarks VARCHAR(500),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS rate_analysis_lines (
+        id SERIAL PRIMARY KEY,
+        civil_execution_id INTEGER NOT NULL REFERENCES civil_executions(id),
+        work_item VARCHAR(300) NOT NULL,
+        material_cost NUMERIC(12,2) NOT NULL DEFAULT 0,
+        labour_cost NUMERIC(12,2) NOT NULL DEFAULT 0,
+        machinery_cost NUMERIC(12,2) NOT NULL DEFAULT 0,
+        overhead_percent NUMERIC(5,2) NOT NULL DEFAULT 0,
+        computed_rate NUMERIC(12,2) NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_boq_lines_civil_execution ON boq_lines(civil_execution_id);
+      CREATE INDEX IF NOT EXISTS idx_quantity_sheet_lines_civil_execution ON quantity_sheet_lines(civil_execution_id);
+      CREATE INDEX IF NOT EXISTS idx_rate_analysis_lines_civil_execution ON rate_analysis_lines(civil_execution_id);
+    `,
+  },
 ];
 
 async function ensureMigrationsTable(client) {

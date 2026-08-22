@@ -414,6 +414,38 @@ export const reconciliationSchema = z.object({
   remarks: optionalString(500),
 });
 
+// ===== Civil Execution (Project extension) =====
+
+export const rateChartSchema = z.object({
+  work_description: requiredString('Work description', 300),
+  unit: requiredString('Unit', 20),
+  standard_rate: positiveNumber,
+});
+
+export const boqLineSchema = z.object({
+  item_no: requiredString('Item no.', 20),
+  description: requiredString('Description', 300),
+  unit: requiredString('Unit', 20),
+  quantity: positiveNumber,
+  rate_chart_id: z.coerce.number().int().positive().nullable().optional(),
+  rate: positiveNumber,
+});
+
+export const quantitySheetLineSchema = z.object({
+  description: requiredString('Description', 300),
+  unit: requiredString('Unit', 20),
+  quantity: positiveNumber,
+  remarks: optionalString(500),
+});
+
+export const rateAnalysisLineSchema = z.object({
+  work_item: requiredString('Work item', 300),
+  material_cost: nonNegativeNumber,
+  labour_cost: nonNegativeNumber,
+  machinery_cost: nonNegativeNumber,
+  overhead_percent: nonNegativeNumber,
+});
+
 // ===== Transport =====
 
 export const vehicleSchema = z.object({
