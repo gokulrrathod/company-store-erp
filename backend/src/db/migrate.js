@@ -17,6 +17,30 @@ const MIGRATIONS = [
       ALTER TABLE material_requests ALTER COLUMN status TYPE VARCHAR(30);
     `,
   },
+  {
+    name: '003_item_batches_fifo_fefo',
+    sql: `
+      CREATE TABLE IF NOT EXISTS item_batches (
+        id SERIAL PRIMARY KEY,
+        item_id INTEGER NOT NULL REFERENCES items(id),
+        batch_number VARCHAR(100),
+        expiry_date DATE,
+        quantity_received NUMERIC(12,2) NOT NULL CHECK (quantity_received > 0),
+        quantity_remaining NUMERIC(12,2) NOT NULL CHECK (quantity_remaining >= 0),
+        source VARCHAR(20) NOT NULL CHECK (source IN ('OPENING', 'GRN', 'ADJUSTMENT')),
+        grn_id INTEGER REFERENCES material_receipts(id),
+        received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_item_batches_item ON item_batches(item_id);
+      CREATE INDEX IF NOT EXISTS idx_item_batches_fefo ON item_batches(item_id, expiry_date, received_at);
+
+      INSERT INTO item_batches (item_id, batch_number, expiry_date, quantity_received, quantity_remaining, source, received_at)
+      SELECT id, 'OPENING', NULL, quantity, quantity, 'OPENING', created_at
+      FROM items
+      WHERE quantity > 0;
+    `,
+  },
 ];
 
 async function ensureMigrationsTable(client) {

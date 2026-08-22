@@ -5,6 +5,7 @@ import { validate } from '../middleware/validate.js';
 import { materialReceiptSchema, inspectLineSchema } from '../validation/schemas.js';
 import { ROLES } from '../config/auth.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+import { addBatch } from '../services/stock.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -124,6 +125,14 @@ router.post('/:id/approve', requireRole(ROLES.STORE_MANAGER, ROLES.ADMIN), async
         `UPDATE items SET quantity = quantity + $1 WHERE id = $2`,
         [line.quantity_received, line.item_id]
       );
+      await addBatch(client, {
+        itemId: line.item_id,
+        batchNumber: line.batch_number || `GRN-${receipt.grn_number}`,
+        expiryDate: line.expiry_date,
+        quantity: line.quantity_received,
+        source: 'GRN',
+        grnId: receipt.id,
+      });
       await client.query(
         `INSERT INTO stock_movements (item_id, type, quantity, reference, remarks)
          VALUES ($1, 'IN', $2, $3, $4)`,

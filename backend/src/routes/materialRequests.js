@@ -5,6 +5,7 @@ import { validate } from '../middleware/validate.js';
 import { materialRequestSchema, materialRequestStatusSchema } from '../validation/schemas.js';
 import { ROLES } from '../config/auth.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
+import { consumeStock, describeConsumption } from '../services/stock.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -61,7 +62,7 @@ router.patch('/:id/forward', requireRole(ROLES.STORE_MANAGER, ROLES.ADMIN), asyn
 }));
 
 router.patch('/:id/status', requireRole(ROLES.STORE_MANAGER, ROLES.ADMIN), validate(materialRequestStatusSchema), asyncHandler(async (req, res) => {
-  const { status } = req.body;
+  const { status, override_batch_id, override_reason } = req.body;
 
   const client = await pool.connect();
   try {
@@ -80,19 +81,20 @@ router.patch('/:id/status', requireRole(ROLES.STORE_MANAGER, ROLES.ADMIN), valid
     let balance_stock = null;
 
     if (status === 'APPROVED') {
-      // Store Issue: deduct stock and log the movement (SOP Module 3)
-      const { rows: itemRows } = await client.query(
-        `UPDATE items SET quantity = quantity - $1 WHERE id = $2 RETURNING *`,
-        [request.quantity_requested, request.item_id]
-      );
-      if (itemRows[0].quantity < 0) throw new Error('Insufficient stock to issue');
+      // Store Issue: FIFO/FEFO batch consumption (Requirements-Store.md §2, AC3)
+      const consumed = await consumeStock(client, request.item_id, request.quantity_requested, {
+        overrideBatchId: override_batch_id,
+        overrideReason: override_reason,
+      });
+      const { rows: itemRows } = await client.query(`SELECT quantity FROM items WHERE id = $1`, [request.item_id]);
       quantity_issued = request.quantity_requested;
       balance_stock = itemRows[0].quantity;
 
       await client.query(
         `INSERT INTO stock_movements (item_id, type, quantity, reference, remarks)
          VALUES ($1, 'OUT', $2, $3, $4)`,
-        [request.item_id, request.quantity_requested, request.requisition_number, `Issued to ${request.department} (${request.requested_by})`]
+        [request.item_id, request.quantity_requested, request.requisition_number,
+          `Issued to ${request.department} (${request.requested_by}) — ${describeConsumption(consumed)}`]
       );
     }
 

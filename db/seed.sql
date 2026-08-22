@@ -13,6 +13,12 @@ INSERT INTO items (code, name, category_id, unit, quantity, minimum_stock, maxim
     ('SG-002', 'Safety Gloves', 4, 'pair', 12, 20, 300, 20, 'Safety Store', 'R-04', 'B-02', 'Safety Store / R-04 / B-02', 45)
 ON CONFLICT DO NOTHING;
 
+INSERT INTO item_batches (item_id, batch_number, expiry_date, quantity_received, quantity_remaining, source, received_at)
+SELECT id, 'OPENING', NULL, quantity, quantity, 'OPENING', created_at
+FROM items
+WHERE quantity > 0
+ON CONFLICT DO NOTHING;
+
 -- Password for all seed users: Password@123
 INSERT INTO users (name, email, password_hash, role) VALUES
     ('Admin User', 'admin@test.com', '$2a$10$xoa5MuMKfW6OflKdA4U4D.4uAJBQkyObBCGNhOEG8ZWdXI/Gg0Sqm', 'ADMIN'),

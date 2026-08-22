@@ -51,6 +51,8 @@ export const materialRequestSchema = z.object({
 
 export const materialRequestStatusSchema = z.object({
   status: z.enum(['APPROVED', 'REJECTED'], { errorMap: () => ({ message: 'Status must be APPROVED or REJECTED' }) }),
+  override_batch_id: z.coerce.number().int().positive().nullable().optional(),
+  override_reason: optionalString(300),
 });
 
 export const purchaseOrderSchema = z.object({

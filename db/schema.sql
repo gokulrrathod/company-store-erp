@@ -165,6 +165,23 @@ CREATE INDEX IF NOT EXISTS idx_po_lines_po ON po_lines(po_id);
 CREATE INDEX IF NOT EXISTS idx_receipt_lines_receipt ON receipt_lines(receipt_id);
 CREATE INDEX IF NOT EXISTS idx_material_receipts_po ON material_receipts(po_id);
 
+-- Per-batch stock ledger driving FIFO/FEFO issuance (Requirements-Store.md §2, AC3)
+CREATE TABLE IF NOT EXISTS item_batches (
+    id SERIAL PRIMARY KEY,
+    item_id INTEGER NOT NULL REFERENCES items(id),
+    batch_number VARCHAR(100),
+    expiry_date DATE,
+    quantity_received NUMERIC(12,2) NOT NULL CHECK (quantity_received > 0),
+    quantity_remaining NUMERIC(12,2) NOT NULL CHECK (quantity_remaining >= 0),
+    source VARCHAR(20) NOT NULL CHECK (source IN ('OPENING', 'GRN', 'ADJUSTMENT')),
+    grn_id INTEGER REFERENCES material_receipts(id),
+    received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_item_batches_item ON item_batches(item_id);
+CREATE INDEX IF NOT EXISTS idx_item_batches_fefo ON item_batches(item_id, expiry_date, received_at);
+
 -- ===== Rejected Material (SOP Module 5) =====
 CREATE TABLE IF NOT EXISTS rejected_materials (
     id SERIAL PRIMARY KEY,

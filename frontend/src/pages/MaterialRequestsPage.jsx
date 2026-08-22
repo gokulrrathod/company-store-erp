@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Typography, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, Stack, IconButton, Alert,
+  RadioGroup, FormControlLabel, Radio, TextField,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CheckIcon from '@mui/icons-material/Check';
@@ -29,6 +30,11 @@ export default function MaterialRequestsPage() {
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState('');
+  const [approveTarget, setApproveTarget] = useState(null);
+  const [approveBatches, setApproveBatches] = useState([]);
+  const [selectedBatchId, setSelectedBatchId] = useState('');
+  const [overrideReason, setOverrideReason] = useState('');
+  const [approveError, setApproveError] = useState('');
 
   const {
     control, handleSubmit, reset, setError,
@@ -72,6 +78,41 @@ export default function MaterialRequestsPage() {
     load();
   };
 
+  const openApprove = async (row) => {
+    setApproveError('');
+    setApproveTarget(row);
+    setOverrideReason('');
+    try {
+      const { data } = await api.get(`/items/${row.item_id}/batches`);
+      setApproveBatches(data);
+      setSelectedBatchId(data[0]?.id ?? '');
+    } catch {
+      setApproveBatches([]);
+      setSelectedBatchId('');
+    }
+  };
+
+  const confirmApprove = async () => {
+    setApproveError('');
+    const suggestedId = approveBatches[0]?.id;
+    const isOverride = selectedBatchId && String(selectedBatchId) !== String(suggestedId);
+    if (isOverride && !overrideReason.trim()) {
+      setApproveError('A reason is required when issuing a batch other than the suggested FIFO/FEFO one.');
+      return;
+    }
+    try {
+      await api.patch(`/material-requests/${approveTarget.id}/status`, {
+        status: 'APPROVED',
+        override_batch_id: selectedBatchId || null,
+        override_reason: isOverride ? overrideReason : undefined,
+      });
+      setApproveTarget(null);
+      load();
+    } catch (err) {
+      setApproveError(err?.response?.data?.error || 'Failed to approve');
+    }
+  };
+
   const canAction = ['STORE_MANAGER', 'ADMIN'].includes(user?.role);
 
   const columnDefs = [
@@ -99,7 +140,7 @@ export default function MaterialRequestsPage() {
         if (p.data.status === 'PENDING') {
           return (
             <>
-              <IconButton size="small" color="success" onClick={() => setStatus(p.data.id, 'APPROVED')} title="Approve &amp; issue"><CheckIcon fontSize="small" /></IconButton>
+              <IconButton size="small" color="success" onClick={() => openApprove(p.data)} title="Approve &amp; issue"><CheckIcon fontSize="small" /></IconButton>
               <IconButton size="small" color="error" onClick={() => setStatus(p.data.id, 'REJECTED')} title="Reject"><CloseIcon fontSize="small" /></IconButton>
               <IconButton size="small" color="info" onClick={() => forward(p.data.id)} title="Forward to Purchase (stock unavailable)"><SendIcon fontSize="small" /></IconButton>
             </>
@@ -108,7 +149,7 @@ export default function MaterialRequestsPage() {
         if (['FORWARDED_TO_PURCHASE', 'PO_RAISED'].includes(p.data.status)) {
           return (
             <>
-              <IconButton size="small" color="success" onClick={() => setStatus(p.data.id, 'APPROVED')} title="Stock arrived — approve &amp; issue"><CheckIcon fontSize="small" /></IconButton>
+              <IconButton size="small" color="success" onClick={() => openApprove(p.data)} title="Stock arrived — approve &amp; issue"><CheckIcon fontSize="small" /></IconButton>
               <IconButton size="small" color="error" onClick={() => setStatus(p.data.id, 'REJECTED')} title="Reject"><CloseIcon fontSize="small" /></IconButton>
             </>
           );
@@ -147,6 +188,44 @@ export default function MaterialRequestsPage() {
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>
           <Button variant="contained" color="primary" onClick={handleSubmit(onSubmit)} disabled={isSubmitting}>Submit</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!approveTarget} onClose={() => setApproveTarget(null)} fullWidth maxWidth="sm">
+        <DialogTitle>Approve &amp; Issue — {approveTarget?.requisition_number}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {approveError && <Alert severity="error">{approveError}</Alert>}
+            {approveBatches.length === 0 ? (
+              <Alert severity="warning">No tracked batches found for this item — issuing from untracked/legacy stock.</Alert>
+            ) : (
+              <>
+                <Alert severity="info">
+                  System suggests the {approveBatches[0].expiry_date ? 'nearest-expiry' : 'oldest'} batch first (FIFO/FEFO). Picking a different one requires a reason.
+                </Alert>
+                <RadioGroup value={String(selectedBatchId)} onChange={(e) => setSelectedBatchId(e.target.value)}>
+                  {approveBatches.map((b, idx) => (
+                    <FormControlLabel
+                      key={b.id}
+                      value={String(b.id)}
+                      control={<Radio size="small" />}
+                      label={`${idx === 0 ? '(Suggested) ' : ''}${b.batch_number || 'OPENING'} — ${b.quantity_remaining} available${b.expiry_date ? `, expires ${new Date(b.expiry_date).toLocaleDateString()}` : ''}`}
+                    />
+                  ))}
+                </RadioGroup>
+                {String(selectedBatchId) !== String(approveBatches[0]?.id) && (
+                  <TextField
+                    label="Override reason" required multiline rows={2}
+                    value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)}
+                  />
+                )}
+              </>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setApproveTarget(null)}>Cancel</Button>
+          <Button variant="contained" color="primary" onClick={confirmApprove}>Approve &amp; Issue</Button>
         </DialogActions>
       </Dialog>
     </ListPageLayout>
