@@ -33,6 +33,7 @@ export default function PurchaseOrdersPage() {
     { field: 'po_number', headerName: 'PO Number', minWidth: 150 },
     { field: 'supplier_name', headerName: 'Supplier', minWidth: 180 },
     { field: 'department', headerName: 'Department', minWidth: 130, valueFormatter: (p) => p.value || '—' },
+    { field: 'project_name', headerName: 'Project', minWidth: 150, valueFormatter: (p) => p.value || '—' },
     { field: 'total_value', headerName: 'Value', type: 'numericColumn', minWidth: 120, valueFormatter: (p) => `₹ ${Number(p.value).toLocaleString('en-IN')}` },
     { field: 'created_by', headerName: 'Created By', minWidth: 150 },
     {

@@ -21,8 +21,10 @@ async function nextPoNumber(client) {
 
 router.get('/', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT po.*, s.name AS supplier_name
-     FROM purchase_orders po JOIN suppliers s ON s.id = po.supplier_id
+    `SELECT po.*, s.name AS supplier_name, p.project_name
+     FROM purchase_orders po
+     JOIN suppliers s ON s.id = po.supplier_id
+     LEFT JOIN projects p ON p.id = po.project_id
      ORDER BY po.created_at DESC`
   );
   res.json(rows);
@@ -30,8 +32,10 @@ router.get('/', asyncHandler(async (req, res) => {
 
 router.get('/:id', asyncHandler(async (req, res) => {
   const { rows: poRows } = await pool.query(
-    `SELECT po.*, s.name AS supplier_name FROM purchase_orders po
-     JOIN suppliers s ON s.id = po.supplier_id WHERE po.id = $1`,
+    `SELECT po.*, s.name AS supplier_name, p.project_name FROM purchase_orders po
+     JOIN suppliers s ON s.id = po.supplier_id
+     LEFT JOIN projects p ON p.id = po.project_id
+     WHERE po.id = $1`,
     [req.params.id]
   );
   if (!poRows.length) return res.status(404).json({ error: 'Purchase order not found' });
@@ -49,8 +53,20 @@ router.get('/:id', asyncHandler(async (req, res) => {
 
 // Budget must be verified before/at PO creation; exceeding it escalates to Finance rather than blocking
 // (Requirements-Purchase.md §1 Budget rule, §11 AC2)
+// A PO against a Project draws from that project's budget row if one exists, otherwise the
+// department-wide budget (project_id IS NULL) — never both (Requirements-Purchase.md §1)
+async function findBudgetForUpdate(client, department, project_id) {
+  const { rows } = await client.query(
+    project_id
+      ? `SELECT * FROM budgets WHERE department = $1 AND project_id = $2 FOR UPDATE`
+      : `SELECT * FROM budgets WHERE department = $1 AND project_id IS NULL FOR UPDATE`,
+    project_id ? [department, project_id] : [department]
+  );
+  return rows[0] || null;
+}
+
 router.post('/', requireRole(ROLES.PURCHASE, ROLES.ADMIN), validate(purchaseOrderSchema), asyncHandler(async (req, res) => {
-  const { supplier_id, department, lines } = req.body;
+  const { supplier_id, department, project_id, lines } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -74,25 +90,21 @@ router.post('/', requireRole(ROLES.PURCHASE, ROLES.ADMIN), validate(purchaseOrde
       }
     }
 
-    const { rows: budgetRows } = await client.query(
-      `SELECT * FROM budgets WHERE department = $1 FOR UPDATE`,
-      [department]
-    );
+    const budget = await findBudgetForUpdate(client, department, project_id || null);
     let budget_status = 'WITHIN_BUDGET';
-    if (budgetRows.length) {
-      const budget = budgetRows[0];
+    if (budget) {
       const wouldExceed = Number(budget.utilized_amount) + total_value > Number(budget.allocated_amount);
       if (wouldExceed) {
         budget_status = 'PENDING_FINANCE_APPROVAL';
       } else {
-        await client.query(`UPDATE budgets SET utilized_amount = utilized_amount + $1 WHERE department = $2`, [total_value, department]);
+        await client.query(`UPDATE budgets SET utilized_amount = utilized_amount + $1 WHERE id = $2`, [total_value, budget.id]);
       }
     }
 
     const { rows } = await client.query(
-      `INSERT INTO purchase_orders (po_number, supplier_id, department, total_value, budget_status, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [po_number, supplier_id, department, total_value, budget_status, req.user.name]
+      `INSERT INTO purchase_orders (po_number, supplier_id, department, project_id, total_value, budget_status, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [po_number, supplier_id, department, project_id || null, total_value, budget_status, req.user.name]
     );
     const po = rows[0];
     for (const line of lines) {
@@ -128,7 +140,10 @@ router.patch('/:id/finance-approve', requireRole(ROLES.FINANCE, ROLES.ADMIN), as
     if (po.budget_status !== 'PENDING_FINANCE_APPROVAL') throw new Error('This PO is not pending finance approval');
 
     if (po.department) {
-      await client.query(`UPDATE budgets SET utilized_amount = utilized_amount + $1 WHERE department = $2`, [po.total_value, po.department]);
+      const budget = await findBudgetForUpdate(client, po.department, po.project_id || null);
+      if (budget) {
+        await client.query(`UPDATE budgets SET utilized_amount = utilized_amount + $1 WHERE id = $2`, [po.total_value, budget.id]);
+      }
     }
     const { rows } = await client.query(
       `UPDATE purchase_orders SET budget_status = 'FINANCE_APPROVED', finance_approved_by = $1, finance_approved_at = now()

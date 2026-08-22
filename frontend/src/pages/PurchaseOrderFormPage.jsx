@@ -19,6 +19,7 @@ export default function PurchaseOrderFormPage() {
   const [items, setItems] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [forwardedMrs, setForwardedMrs] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [formError, setFormError] = useState('');
 
   const {
@@ -26,7 +27,7 @@ export default function PurchaseOrderFormPage() {
     formState: { isSubmitting, errors },
   } = useForm({
     resolver: zodResolver(purchaseOrderSchema),
-    defaultValues: { supplier_id: '', department: '', lines: [{ item_id: '', quantity_ordered: '', mr_id: '' }] },
+    defaultValues: { supplier_id: '', department: '', project_id: '', lines: [{ item_id: '', quantity_ordered: '', mr_id: '' }] },
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'lines' });
 
@@ -34,6 +35,7 @@ export default function PurchaseOrderFormPage() {
     api.get('/items').then((res) => setItems(res.data)).catch(() => setItems([]));
     api.get('/suppliers').then((res) => setSuppliers(res.data)).catch(() => setSuppliers([]));
     api.get('/material-requests').then((res) => setForwardedMrs(res.data.filter((m) => m.status === 'FORWARDED_TO_PURCHASE'))).catch(() => setForwardedMrs([]));
+    api.get('/projects').then((res) => setProjects(res.data)).catch(() => setProjects([]));
   }, []);
 
   const onSubmit = async (values) => {
@@ -73,6 +75,12 @@ export default function PurchaseOrderFormPage() {
           <RHFSelect
             name="department" control={control} label="Department" required
             options={DEPARTMENTS} getLabel={(d) => d} getValue={(d) => d}
+          />
+        </Grid>
+        <Grid item xs={12} sm={6}>
+          <RHFSelect
+            name="project_id" control={control} label="Project (optional — draws from that project's budget)"
+            options={projects} getLabel={(p) => p.project_name} getValue={(p) => p.id}
           />
         </Grid>
       </Grid>

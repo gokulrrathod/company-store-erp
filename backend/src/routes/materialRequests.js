@@ -21,23 +21,27 @@ async function nextRequisitionNumber(client) {
 
 router.get('/', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT r.*, i.name AS item_name, i.code AS item_code
-     FROM material_requests r JOIN items i ON i.id = r.item_id
+    `SELECT r.*, i.name AS item_name, i.code AS item_code, p.project_name
+     FROM material_requests r
+     JOIN items i ON i.id = r.item_id
+     LEFT JOIN projects p ON p.id = r.project_id
      ORDER BY r.created_at DESC`
   );
   res.json(rows);
 }));
 
 router.post('/', validate(materialRequestSchema), asyncHandler(async (req, res) => {
-  const { department, item_id, requested_by, quantity_requested, purpose, remarks } = req.body;
+  const { department, item_id, requested_by, quantity_requested, purpose, remarks, project_id, priority, required_date } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const requisition_number = await nextRequisitionNumber(client);
     const { rows } = await client.query(
-      `INSERT INTO material_requests (requisition_number, department, item_id, requested_by, quantity_requested, purpose, remarks)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [requisition_number, department, item_id, requested_by, quantity_requested, purpose || null, remarks || null]
+      `INSERT INTO material_requests
+         (requisition_number, department, item_id, requested_by, quantity_requested, purpose, remarks, project_id, priority, required_date)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      [requisition_number, department, item_id, requested_by, quantity_requested, purpose || null, remarks || null,
+        project_id || null, priority || 'MEDIUM', required_date || null]
     );
     await client.query('COMMIT');
     res.status(201).json(rows[0]);

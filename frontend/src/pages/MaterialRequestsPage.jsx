@@ -23,11 +23,19 @@ const statusColor = {
   FORWARDED_TO_PURCHASE: 'info', PO_RAISED: 'secondary',
 };
 const DEPARTMENTS = ['Production', 'Purchase', 'Quality', 'Maintenance', 'Admin'];
+const PRIORITIES = [
+  { value: 'LOW', label: 'Low' },
+  { value: 'MEDIUM', label: 'Medium' },
+  { value: 'HIGH', label: 'High' },
+  { value: 'URGENT', label: 'Urgent' },
+];
+const priorityColor = { LOW: 'default', MEDIUM: 'default', HIGH: 'warning', URGENT: 'error' };
 
 export default function MaterialRequestsPage() {
   const { user } = useAuth();
   const [requests, setRequests] = useState([]);
   const [items, setItems] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState('');
   const [approveTarget, setApproveTarget] = useState(null);
@@ -41,19 +49,26 @@ export default function MaterialRequestsPage() {
     formState: { isSubmitting },
   } = useForm({
     resolver: zodResolver(materialRequestSchema),
-    defaultValues: { department: '', item_id: '', requested_by: '', quantity_requested: '', purpose: '', remarks: '' },
+    defaultValues: {
+      department: '', item_id: '', requested_by: '', quantity_requested: '', purpose: '', remarks: '',
+      project_id: '', priority: 'MEDIUM', required_date: '',
+    },
   });
 
   const load = () => {
     api.get('/material-requests').then((res) => setRequests(res.data)).catch(() => setRequests([]));
     api.get('/items').then((res) => setItems(res.data)).catch(() => setItems([]));
+    api.get('/projects').then((res) => setProjects(res.data)).catch(() => setProjects([]));
   };
 
   useEffect(load, []);
 
   const openDialog = () => {
     setFormError('');
-    reset({ department: '', item_id: '', requested_by: '', quantity_requested: '', purpose: '', remarks: '' });
+    reset({
+      department: '', item_id: '', requested_by: '', quantity_requested: '', purpose: '', remarks: '',
+      project_id: '', priority: 'MEDIUM', required_date: '',
+    });
     setOpen(true);
   };
 
@@ -124,6 +139,12 @@ export default function MaterialRequestsPage() {
     { field: 'quantity_issued', headerName: 'Qty Issued', type: 'numericColumn', minWidth: 110, valueFormatter: (p) => p.value ?? '—' },
     { field: 'balance_stock', headerName: 'Balance Stock', type: 'numericColumn', minWidth: 130, valueFormatter: (p) => p.value ?? '—' },
     { field: 'purpose', headerName: 'Purpose', minWidth: 150, valueGetter: (p) => p.data.purpose || '—' },
+    { field: 'project_name', headerName: 'Project', minWidth: 150, valueGetter: (p) => p.data.project_name || '—' },
+    { field: 'required_date', headerName: 'Required Date', minWidth: 130, valueFormatter: (p) => (p.value ? new Date(p.value).toLocaleDateString() : '—') },
+    {
+      field: 'priority', headerName: 'Priority', minWidth: 100,
+      cellRenderer: (p) => <Chip size="small" label={p.value} color={priorityColor[p.value]} />,
+    },
     {
       field: 'status',
       headerName: 'Status',
@@ -181,6 +202,9 @@ export default function MaterialRequestsPage() {
             <RHFSelect name="item_id" control={control} label="Item" required options={items} getLabel={(i) => `${i.code} — ${i.name}`} getValue={(i) => i.id} />
             <RHFTextField name="requested_by" control={control} label="Requested By" required />
             <RHFTextField name="quantity_requested" control={control} label="Quantity Requested" type="number" required />
+            <RHFSelect name="project_id" control={control} label="Project (optional)" options={projects} getLabel={(p) => p.project_name} getValue={(p) => p.id} />
+            <RHFSelect name="priority" control={control} label="Priority" options={PRIORITIES} getLabel={(p) => p.label} getValue={(p) => p.value} />
+            <RHFTextField name="required_date" control={control} label="Required Date" type="date" InputLabelProps={{ shrink: true }} />
             <RHFTextField name="purpose" control={control} label="Purpose" />
             <RHFTextField name="remarks" control={control} label="Remarks" multiline rows={2} />
           </Stack>

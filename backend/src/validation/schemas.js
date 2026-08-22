@@ -47,6 +47,9 @@ export const materialRequestSchema = z.object({
   quantity_requested: positiveNumber,
   purpose: optionalString(200),
   remarks: optionalString(500),
+  project_id: z.coerce.number().int().positive().nullable().optional(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
+  required_date: optionalString(20),
 });
 
 export const materialRequestStatusSchema = z.object({
@@ -58,6 +61,7 @@ export const materialRequestStatusSchema = z.object({
 export const purchaseOrderSchema = z.object({
   supplier_id: z.coerce.number().int().positive('Select a supplier'),
   department: requiredString('Department', 100),
+  project_id: z.coerce.number().int().positive().nullable().optional(),
   lines: z.array(z.object({
     item_id: z.coerce.number().int().positive('Select an item'),
     quantity_ordered: positiveNumber,
@@ -192,6 +196,7 @@ export const vendorApprovalSchema = z.object({
 export const budgetSchema = z.object({
   department: requiredString('Department', 100),
   allocated_amount: nonNegativeNumber,
+  project_id: z.coerce.number().int().positive().nullable().optional(),
 });
 
 // ===== Design =====

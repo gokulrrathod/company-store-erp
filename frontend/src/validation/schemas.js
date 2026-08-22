@@ -45,11 +45,15 @@ export const materialRequestSchema = z.object({
   quantity_requested: positiveNumber,
   purpose: optionalString(200),
   remarks: optionalString(500),
+  project_id: z.union([z.string(), z.number()]).optional().nullable(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
+  required_date: optionalString(20),
 });
 
 export const purchaseOrderSchema = z.object({
   supplier_id: z.union([z.string(), z.number()]).refine((v) => v !== '' && v != null, 'Select a supplier'),
   department: requiredString('Department', 100),
+  project_id: z.union([z.string(), z.number()]).optional().nullable(),
   lines: z.array(z.object({
     item_id: z.union([z.string(), z.number()]).refine((v) => v !== '' && v != null, 'Select an item'),
     quantity_ordered: positiveNumber,
@@ -158,6 +162,7 @@ export const vendorSchema = z.object({
 export const budgetSchema = z.object({
   department: requiredString('Department', 100),
   allocated_amount: nonNegativeNumber,
+  project_id: z.union([z.string(), z.number()]).optional().nullable(),
 });
 
 // ===== Design =====

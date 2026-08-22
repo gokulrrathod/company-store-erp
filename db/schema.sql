@@ -570,6 +570,22 @@ CREATE TABLE IF NOT EXISTS projects (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Project dimension on MR/Budget/PO (Requirements-Purchase.md §1) — added here via ALTER since these
+-- tables are defined earlier in this file, before the Project table exists
+ALTER TABLE material_requests ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id);
+ALTER TABLE material_requests ADD COLUMN IF NOT EXISTS priority VARCHAR(10) NOT NULL DEFAULT 'MEDIUM'
+    CHECK (priority IN ('LOW', 'MEDIUM', 'HIGH', 'URGENT'));
+ALTER TABLE material_requests ADD COLUMN IF NOT EXISTS required_date DATE;
+CREATE INDEX IF NOT EXISTS idx_material_requests_project ON material_requests(project_id);
+
+ALTER TABLE budgets ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id);
+ALTER TABLE budgets DROP CONSTRAINT IF EXISTS budgets_department_key;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_budgets_department_only ON budgets(department) WHERE project_id IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_budgets_department_project ON budgets(department, project_id) WHERE project_id IS NOT NULL;
+
+ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id);
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_project ON purchase_orders(project_id);
+
 -- Daily Progress Report — plain web form for the demo (mobile offline sync is a real-ERP-only item, Recommended Decision #10)
 CREATE TABLE IF NOT EXISTS daily_progress_reports (
     id SERIAL PRIMARY KEY,
