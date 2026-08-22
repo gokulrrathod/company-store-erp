@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS material_requests (
     balance_stock NUMERIC(12,2),
     purpose VARCHAR(200),
     issue_date TIMESTAMPTZ,
-    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' CHECK (status IN
         ('PENDING', 'APPROVED', 'REJECTED', 'FORWARDED_TO_PURCHASE', 'PO_RAISED')),
     remarks VARCHAR(500),
     approved_by VARCHAR(100),

@@ -11,6 +11,12 @@ const MIGRATIONS = [
       CREATE INDEX IF NOT EXISTS idx_po_lines_mr ON po_lines(mr_id);
     `,
   },
+  {
+    name: '002_widen_material_requests_status',
+    sql: `
+      ALTER TABLE material_requests ALTER COLUMN status TYPE VARCHAR(30);
+    `,
+  },
 ];
 
 async function ensureMigrationsTable(client) {
