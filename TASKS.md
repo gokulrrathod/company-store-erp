@@ -58,6 +58,44 @@ All 8 departments built, wired into one Express/Postgres app, and covered by pas
 - [x] **Labeled the two placeholder-only inputs** — Inventory's quick-search box and the header's menu-search Autocomplete now have a proper `label` (not just a `placeholder`), matching every other form field in the app.
 - [x] Full e2e regression (13 tests) re-verified green after these changes.
 
+## SOP Compliance Gap Remediation (Analyst Review, 2026-08-22)
+
+Cross-checked all 8 `Requirements-*.md` docs against the actual schema/routes/frontend (facts verified via direct grep/read of the codebase, not assumption). Full findings in session notes; task backlog below, ordered by severity. **Nothing in this section is implemented yet.**
+
+### Tier 0 — explicit hard SOP rules currently violated
+
+- [ ] **Purchase: link PO to MR.** `purchase_orders` has no FK to `material_requests` at all — Purchase can create a PO with arbitrary lines, bypassing MR/approval entirely. Add `mr_id` (nullable FK) to `purchase_orders`; PO creation should select from approved MRs instead of freely choosing items. (Purchase §1/§3)
+- [ ] **Store: enforce FIFO/FEFO at Material Issue.** `receipt_lines.batch_number`/`expiry_date` are captured but Material Issue decrements `items.quantity` as one pool with no batch/expiry ordering. Needs batch-aware stock allocation + an explicit override-reason field when a non-oldest batch is chosen. (Store §2, AC3)
+- [ ] **System-wide: audit trail.** No `audit_log` table exists. Add one (entity, entity_id, field, old_value, new_value, changed_by, changed_at) and wire it into every UPDATE across all modules — named validation rule in Purchase §5, not optional.
+- [ ] **Store: wire up `damaged_stock`/`rejected_stock`.** Both columns exist on `items`, are read in the `available_stock` formula, but nothing ever writes to them — confirmed zero write paths. Rejection entries currently never touch the item's own stock breakdown, so `available_stock` silently under-counts whenever material is rejected/damaged. Fix the write path from Inspection (damage) and Rejected Material (rejection) flows.
+- [ ] **Accounts: itemize invoices.** No `invoice_lines` table — every invoice is one lump `taxable_amount` with no item/qty/rate/HSN/SAC breakdown, as the Accounts Invoice entity requires.
+
+### Tier 1 — whole entities missing
+
+- [ ] **Design: Design Input Sheet entity** (Customer Spec, Process Data, Layout Drawing, Standards, Material Spec, Corrosion Allowance, Design Pressure, Notes, Attachments) — pipeline step before Calculation, currently skipped entirely.
+- [ ] **Design: Design Calculation entity** (Calculation Number, Formula Reference, Safety Factor, Load/Shaft/Bearing/Motor/Gearbox calcs) — also currently skipped.
+- [ ] **Design: real document-control/revision history.** Only a single `revision` string on `drawings`; no per-revision record of prepared/checked/approved-by + date (§5).
+- [ ] **Production: Daily Production Entry** (date, planned/actual/balance qty, shift, engineer) — no table.
+- [ ] **Production: Resource Allocation** (Manpower/Machine/Space masters + allocation records) — no tables.
+- [ ] **Project/Civil: Civil Execution extension** (BOQ, Rate Chart, Quantity Sheet, Rate Analysis, Estimated Cost) — entirely absent.
+- [ ] **System-wide: file/document upload.** Confirmed zero upload code anywhere in the backend (no multer, no attachment handling). Needed by GRN, Vendor docs, Design attachments, DPR site photos, Insurance docs, Invoice PDFs — essentially every module's SOP.
+- [ ] **System-wide: PDF/document generation.** Delivery Challan, GA drawings, Payment Vouchers are string/number fields only — nothing produces an actual document.
+
+### Tier 2 — smaller but real gaps
+
+- [ ] Purchase: MR missing `project_id`, `priority`, `required_date`; Budget has no project dimension (department-only currently).
+- [ ] Purchase: PO has no delivery-tracking fields (expected/actual delivery date) or "Amended" status; no delay alerts.
+- [ ] Purchase: no Vendor Performance / Delivery Delay reports.
+- [ ] Store: 6 of 12 SOP reports missing (GRN Register, Material Issue Register, Inventory Summary, Rejected Material Report, Scrap Report, Inventory Audit Report).
+- [ ] Store: dashboard has 6 of 10 SOP KPIs (missing Daily Inward/Outward, Monthly Consumption, Expiring Materials, Inventory Accuracy, Warehouse Utilization).
+- [ ] Design: ECN links to a single drawing; SOP describes affected-drawings as a list.
+- [ ] Accounts: no Document Archive (searchable by invoice/party/date); no Voucher Number; Payment has one generic `reference_number` instead of distinct Bank/UTR-or-Cheque fields.
+- [ ] Transport: `insurance_records.document_name` is a filename string, not real file storage (depends on the system-wide upload task above).
+
+### Confirmed intentionally out of scope (not gaps)
+
+GST Reconciliation (Accounts, Phase 2 per Recommended Decision #8), mobile/offline DPR sync (Recommended Decision #10), SMS/WhatsApp notification channels (optional per SOP) — all explicitly deferred already, not oversights.
+
 ## Next Up (requested, not started)
 
 1. **Push to GitHub** (this session) — repo: `https://github.com/gokulrrathod/company-store-erp.git`.
