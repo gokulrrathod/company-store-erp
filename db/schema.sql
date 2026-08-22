@@ -338,6 +338,27 @@ CREATE TABLE IF NOT EXISTS design_input_sheets (
 
 CREATE INDEX IF NOT EXISTS idx_design_input_sheets_drawing ON design_input_sheets(drawing_id);
 
+-- Design Calculation: multiple numbered calc records per drawing, gated on a
+-- Completed Design Input Sheet (Requirements-Design.md §3 step 4)
+CREATE TABLE IF NOT EXISTS design_calculations (
+    id SERIAL PRIMARY KEY,
+    calculation_number VARCHAR(50) NOT NULL UNIQUE,
+    drawing_id INTEGER NOT NULL REFERENCES drawings(id),
+    design_engineer VARCHAR(100) NOT NULL,
+    calculation_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    formula_reference VARCHAR(300),
+    safety_factor NUMERIC(6,2),
+    load_calculation TEXT,
+    shaft_calculation TEXT,
+    bearing_calculation TEXT,
+    motor_calculation TEXT,
+    gearbox_calculation TEXT,
+    remarks TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_design_calculations_drawing ON design_calculations(drawing_id);
+
 -- BOM lines feed Production's BOM consumption and Store's MR chain (shared entity, read cross-module)
 CREATE TABLE IF NOT EXISTS bom_lines (
     id SERIAL PRIMARY KEY,

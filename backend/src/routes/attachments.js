@@ -11,7 +11,7 @@ const MAX_SIZE_BYTES = 15 * 1024 * 1024; // 15MB — generous for drawings/PDFs,
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_SIZE_BYTES } });
 
 const ENTITY_TYPES = [
-  'drawing', 'design_input_sheet', 'vendor', 'daily_progress_report',
+  'drawing', 'design_input_sheet', 'design_calculation', 'vendor', 'daily_progress_report',
   'insurance_record', 'material_receipt', 'rejected_material',
 ];
 

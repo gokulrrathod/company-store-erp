@@ -209,6 +209,18 @@ export const drawingSchema = z.object({
   design_head: optionalString(100),
 });
 
+export const designCalculationSchema = z.object({
+  calculation_date: optionalString(20),
+  formula_reference: optionalString(300),
+  safety_factor: nonNegativeNumber.nullable().optional(),
+  load_calculation: optionalString(2000),
+  shaft_calculation: optionalString(2000),
+  bearing_calculation: optionalString(2000),
+  motor_calculation: optionalString(2000),
+  gearbox_calculation: optionalString(2000),
+  remarks: optionalString(1000),
+});
+
 export const designInputSheetSchema = z.object({
   customer_specification: optionalString(2000),
   process_data: optionalString(2000),

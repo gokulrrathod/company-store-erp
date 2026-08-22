@@ -8,11 +8,12 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import DataTable from '../components/DataTable.jsx';
 import AttachmentsPanel from '../components/AttachmentsPanel.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import RHFSelect from '../components/form/RHFSelect.jsx';
-import { bomLineSchema, ecnSchema, designInputSheetSchema } from '../validation/schemas.js';
+import { bomLineSchema, ecnSchema, designInputSheetSchema, designCalculationSchema } from '../validation/schemas.js';
 import { CHECKLIST_ITEMS } from '../config/designChecklist.js';
 import { applyServerErrors } from '../utils/applyServerErrors.js';
 import { api } from '../api/client.js';
@@ -41,6 +42,8 @@ export default function DrawingDetailPage() {
   const [actionError, setActionError] = useState('');
   const [bomOpen, setBomOpen] = useState(false);
   const [ecnOpen, setEcnOpen] = useState(false);
+  const [calcOpen, setCalcOpen] = useState(false);
+  const [calcView, setCalcView] = useState(null);
   const [checklist, setChecklist] = useState({});
   const [checkerRemarks, setCheckerRemarks] = useState('');
   const [allDrawings, setAllDrawings] = useState([]);
@@ -62,6 +65,14 @@ export default function DrawingDetailPage() {
     defaultValues: {
       customer_specification: '', process_data: '', applicable_standards: '', material_specification: '',
       corrosion_allowance: '', design_pressure: '', previous_reference_drawing_id: '', design_notes: '',
+    },
+  });
+
+  const calcForm = useForm({
+    resolver: zodResolver(designCalculationSchema),
+    defaultValues: {
+      calculation_date: '', formula_reference: '', safety_factor: '',
+      load_calculation: '', shaft_calculation: '', bearing_calculation: '', motor_calculation: '', gearbox_calculation: '', remarks: '',
     },
   });
 
@@ -186,6 +197,21 @@ export default function DrawingDetailPage() {
     }
   };
 
+  const addCalculation = async (values) => {
+    setActionError('');
+    try {
+      await api.post(`/drawings/${id}/calculations`, values);
+      setCalcOpen(false);
+      calcForm.reset({
+        calculation_date: '', formula_reference: '', safety_factor: '',
+        load_calculation: '', shaft_calculation: '', bearing_calculation: '', motor_calculation: '', gearbox_calculation: '', remarks: '',
+      });
+      load();
+    } catch (err) {
+      applyServerErrors(err, calcForm.setError, setActionError);
+    }
+  };
+
   const raiseEcn = async (values) => {
     setActionError('');
     try {
@@ -209,6 +235,24 @@ export default function DrawingDetailPage() {
   };
 
   if (!drawing) return <Typography>Loading...</Typography>;
+
+  const inputSheetCompleted = drawing.input_sheet?.status === 'COMPLETED';
+
+  const calcColumnDefs = [
+    { field: 'calculation_number', headerName: 'Calc No.', minWidth: 130 },
+    { field: 'calculation_date', headerName: 'Date', minWidth: 110, valueFormatter: (p) => new Date(p.value).toLocaleDateString() },
+    { field: 'design_engineer', headerName: 'Engineer', minWidth: 140 },
+    { field: 'formula_reference', headerName: 'Formula Ref', minWidth: 160, valueFormatter: (p) => p.value || '—' },
+    { field: 'safety_factor', headerName: 'Safety Factor', type: 'numericColumn', minWidth: 130, valueFormatter: (p) => p.value ?? '—' },
+    {
+      headerName: 'View', minWidth: 70, flex: 0, sortable: false, filter: false,
+      cellRenderer: (p) => (
+        <IconButton size="small" onClick={() => setCalcView(p.data)}>
+          <VisibilityIcon fontSize="small" />
+        </IconButton>
+      ),
+    },
+  ];
 
   const bomColumnDefs = [
     { field: 'item_no', headerName: 'Item No.', minWidth: 100 },
@@ -329,6 +373,23 @@ export default function DrawingDetailPage() {
             <Box sx={{ mt: 2 }}>
               <AttachmentsPanel entityType="design_input_sheet" entityId={drawing.input_sheet.id} canUpload={isEngineer && drawing.input_sheet.status === 'DRAFT'} />
             </Box>
+          </>
+        )}
+      </Section>
+
+      <Section title="Design Calculations">
+        {!inputSheetCompleted ? (
+          <Alert severity="warning">Complete the Design Input Sheet above before adding calculations.</Alert>
+        ) : (
+          <>
+            <DataTable
+              rowData={drawing.calculations} columnDefs={calcColumnDefs} pagination={false}
+              height={Math.max(160, drawing.calculations.length * 56 + 60)} getRowId={(p) => String(p.data.id)}
+              emptyMessage="No calculations recorded yet."
+            />
+            {isEngineer && (
+              <Button startIcon={<AddIcon />} sx={{ mt: 1.5 }} onClick={() => setCalcOpen(true)}>Add Calculation</Button>
+            )}
           </>
         )}
       </Section>
@@ -460,6 +521,49 @@ export default function DrawingDetailPage() {
         <DialogActions>
           <Button onClick={() => setEcnOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={ecnForm.handleSubmit(raiseEcn)}>Raise ECN</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={calcOpen} onClose={() => setCalcOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Add Design Calculation</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <RHFTextField name="calculation_date" control={calcForm.control} label="Calculation Date" type="date" InputLabelProps={{ shrink: true }} />
+            <RHFTextField name="formula_reference" control={calcForm.control} label="Formula Reference" />
+            <RHFTextField name="safety_factor" control={calcForm.control} label="Safety Factor" type="number" />
+            <RHFTextField name="load_calculation" control={calcForm.control} label="Load Calculation" multiline rows={2} />
+            <RHFTextField name="shaft_calculation" control={calcForm.control} label="Shaft Calculation" multiline rows={2} />
+            <RHFTextField name="bearing_calculation" control={calcForm.control} label="Bearing Calculation" multiline rows={2} />
+            <RHFTextField name="motor_calculation" control={calcForm.control} label="Motor Calculation" multiline rows={2} />
+            <RHFTextField name="gearbox_calculation" control={calcForm.control} label="Gearbox Calculation" multiline rows={2} />
+            <RHFTextField name="remarks" control={calcForm.control} label="Remarks" multiline rows={2} />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCalcOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={calcForm.handleSubmit(addCalculation)}>Add</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!calcView} onClose={() => setCalcView(null)} fullWidth maxWidth="sm">
+        <DialogTitle>{calcView?.calculation_number}</DialogTitle>
+        <DialogContent>
+          {calcView && (
+            <Stack spacing={1.5} sx={{ mt: 1 }}>
+              <Box><Typography variant="caption" color="text.secondary">Formula Reference</Typography><Typography variant="body2">{calcView.formula_reference || '—'}</Typography></Box>
+              <Box><Typography variant="caption" color="text.secondary">Safety Factor</Typography><Typography variant="body2">{calcView.safety_factor ?? '—'}</Typography></Box>
+              <Box><Typography variant="caption" color="text.secondary">Load Calculation</Typography><Typography variant="body2">{calcView.load_calculation || '—'}</Typography></Box>
+              <Box><Typography variant="caption" color="text.secondary">Shaft Calculation</Typography><Typography variant="body2">{calcView.shaft_calculation || '—'}</Typography></Box>
+              <Box><Typography variant="caption" color="text.secondary">Bearing Calculation</Typography><Typography variant="body2">{calcView.bearing_calculation || '—'}</Typography></Box>
+              <Box><Typography variant="caption" color="text.secondary">Motor Calculation</Typography><Typography variant="body2">{calcView.motor_calculation || '—'}</Typography></Box>
+              <Box><Typography variant="caption" color="text.secondary">Gearbox Calculation</Typography><Typography variant="body2">{calcView.gearbox_calculation || '—'}</Typography></Box>
+              <Box><Typography variant="caption" color="text.secondary">Remarks</Typography><Typography variant="body2">{calcView.remarks || '—'}</Typography></Box>
+              <AttachmentsPanel entityType="design_calculation" entityId={calcView.id} canUpload={isEngineer} title="Attachments (Excel/PDF)" />
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCalcView(null)}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>

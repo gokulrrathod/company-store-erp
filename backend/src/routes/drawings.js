@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { pool } from '../db/pool.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { drawingSchema, checklistSchema, bomLineSchema, ecnSchema, ecnApprovalSchema, designInputSheetSchema, designInputSheetStatusSchema } from '../validation/schemas.js';
+import { drawingSchema, checklistSchema, bomLineSchema, ecnSchema, ecnApprovalSchema, designInputSheetSchema, designInputSheetStatusSchema, designCalculationSchema } from '../validation/schemas.js';
 import { CHECKLIST_ITEMS } from '../config/designChecklist.js';
 import { ROLES } from '../config/auth.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
@@ -46,7 +46,11 @@ router.get('/:id', asyncHandler(async (req, res) => {
      WHERE dis.drawing_id = $1`,
     [req.params.id]
   );
-  res.json({ ...rows[0], bom_lines: bomLines, ecns, input_sheet: inputSheetRows[0] || null });
+  const { rows: calculations } = await pool.query(
+    `SELECT * FROM design_calculations WHERE drawing_id = $1 ORDER BY created_at DESC`,
+    [req.params.id]
+  );
+  res.json({ ...rows[0], bom_lines: bomLines, ecns, input_sheet: inputSheetRows[0] || null, calculations });
 }));
 
 // Step 3 of the Design pipeline (Requirements-Design.md §3) - the documented basis
@@ -109,6 +113,40 @@ router.patch('/:id/input-sheet/status', requireRole(ROLES.DESIGN_ENGINEER, ROLES
     [req.body.status, req.params.id]
   );
   res.json(rows[0]);
+}));
+
+// Step 4 of the Design pipeline - gated on a Completed Design Input Sheet
+// (Requirements-Design.md §3: calculations follow design input collection)
+router.post('/:id/calculations', requireRole(ROLES.DESIGN_ENGINEER, ROLES.ADMIN), validate(designCalculationSchema), asyncHandler(async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: sheetRows } = await client.query(`SELECT status FROM design_input_sheets WHERE drawing_id = $1`, [req.params.id]);
+    if (!sheetRows.length || sheetRows[0].status !== 'COMPLETED') {
+      throw new Error('Design Input Sheet must be Completed before adding a Design Calculation');
+    }
+
+    const {
+      calculation_date, formula_reference, safety_factor,
+      load_calculation, shaft_calculation, bearing_calculation, motor_calculation, gearbox_calculation, remarks,
+    } = req.body;
+    const calculation_number = await nextNumber(client, 'design_calculations', 'calculation_number', 'CALC');
+    const { rows } = await client.query(
+      `INSERT INTO design_calculations
+         (calculation_number, drawing_id, design_engineer, calculation_date, formula_reference, safety_factor,
+          load_calculation, shaft_calculation, bearing_calculation, motor_calculation, gearbox_calculation, remarks)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+      [calculation_number, req.params.id, req.user.name, calculation_date || new Date(), formula_reference || null, safety_factor ?? null,
+        load_calculation || null, shaft_calculation || null, bearing_calculation || null, motor_calculation || null, gearbox_calculation || null, remarks || null]
+    );
+    await client.query('COMMIT');
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    res.status(400).json({ error: err.message });
+  } finally {
+    client.release();
+  }
 }));
 
 router.post('/', requireRole(ROLES.DESIGN_ENGINEER, ROLES.ADMIN), validate(drawingSchema), asyncHandler(async (req, res, next) => {

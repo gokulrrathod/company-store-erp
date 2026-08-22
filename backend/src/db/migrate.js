@@ -163,6 +163,28 @@ const MIGRATIONS = [
       CREATE TRIGGER audit_design_input_sheets AFTER UPDATE ON design_input_sheets FOR EACH ROW EXECUTE FUNCTION audit_log_row_changes();
     `,
   },
+  {
+    name: '008_design_calculations',
+    sql: `
+      CREATE TABLE IF NOT EXISTS design_calculations (
+        id SERIAL PRIMARY KEY,
+        calculation_number VARCHAR(50) NOT NULL UNIQUE,
+        drawing_id INTEGER NOT NULL REFERENCES drawings(id),
+        design_engineer VARCHAR(100) NOT NULL,
+        calculation_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        formula_reference VARCHAR(300),
+        safety_factor NUMERIC(6,2),
+        load_calculation TEXT,
+        shaft_calculation TEXT,
+        bearing_calculation TEXT,
+        motor_calculation TEXT,
+        gearbox_calculation TEXT,
+        remarks TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_design_calculations_drawing ON design_calculations(drawing_id);
+    `,
+  },
 ];
 
 async function ensureMigrationsTable(client) {
