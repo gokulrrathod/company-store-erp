@@ -473,9 +473,23 @@ CREATE TABLE IF NOT EXISTS rework_rejections (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Daily Production Entry (Requirements-Production.md §1) — date/shift-level output against an activity
+CREATE TABLE IF NOT EXISTS daily_production_entries (
+    id SERIAL PRIMARY KEY,
+    schedule_id INTEGER NOT NULL REFERENCES production_schedules(id),
+    entry_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    shift VARCHAR(50) NOT NULL,
+    engineer VARCHAR(100) NOT NULL,
+    planned_qty NUMERIC(12,2) NOT NULL CHECK (planned_qty > 0),
+    actual_qty NUMERIC(12,2) NOT NULL CHECK (actual_qty >= 0),
+    balance_qty NUMERIC(12,2) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_production_schedules_plan ON production_schedules(plan_id);
 CREATE INDEX IF NOT EXISTS idx_stage_inspections_schedule ON stage_inspections(schedule_id);
 CREATE INDEX IF NOT EXISTS idx_rework_rejections_schedule ON rework_rejections(schedule_id);
+CREATE INDEX IF NOT EXISTS idx_daily_production_entries_schedule ON daily_production_entries(schedule_id);
 
 -- =====================================================================
 -- PROJECT / CIVIL (merged module, per Recommended Decision #1)

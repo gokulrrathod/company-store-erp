@@ -316,6 +316,14 @@ export const reworkRejectionSchema = z.object({
   responsible_engineer: requiredString('Responsible engineer', 100),
 });
 
+export const dailyProductionEntrySchema = z.object({
+  entry_date: requiredString('Date', 20),
+  shift: requiredString('Shift', 50),
+  engineer: requiredString('Engineer', 100),
+  planned_qty: positiveNumber,
+  actual_qty: nonNegativeNumber,
+});
+
 // ===== Project / Civil =====
 
 export const projectStatusSchema = z.object({

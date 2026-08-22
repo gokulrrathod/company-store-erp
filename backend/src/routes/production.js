@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import {
   productionPlanSchema, scheduleSchema, scheduleStatusSchema, stageInspectionSchema, reworkRejectionSchema,
+  dailyProductionEntrySchema,
 } from '../validation/schemas.js';
 import { ROLES } from '../config/auth.js';
 import { asyncHandler } from '../middleware/asyncHandler.js';
@@ -74,7 +75,10 @@ router.get('/schedules/:id', asyncHandler(async (req, res) => {
   const { rows: reworks } = await pool.query(
     `SELECT * FROM rework_rejections WHERE schedule_id = $1 ORDER BY created_at DESC`, [req.params.id]
   );
-  res.json({ ...rows[0], inspections, reworks });
+  const { rows: dailyEntries } = await pool.query(
+    `SELECT * FROM daily_production_entries WHERE schedule_id = $1 ORDER BY entry_date DESC, created_at DESC`, [req.params.id]
+  );
+  res.json({ ...rows[0], inspections, reworks, daily_entries: dailyEntries });
 }));
 
 router.patch('/schedules/:id/status', requireRole(ROLES.PRODUCTION, ROLES.SHOP_FLOOR_ENGINEER, ROLES.ADMIN), validate(scheduleStatusSchema), asyncHandler(async (req, res) => {
@@ -109,6 +113,22 @@ router.post('/schedules/:id/rework-rejections', requireRole(ROLES.PRODUCTION, RO
     `INSERT INTO rework_rejections (schedule_id, part_name, quantity_produced, rework_qty, rejection_qty, reason, corrective_action, responsible_engineer)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
     [req.params.id, part_name, quantity_produced, rework_qty, rejection_qty, reason, corrective_action || null, responsible_engineer]
+  );
+  res.status(201).json(rows[0]);
+}));
+
+// ===== Daily Production Entry (Requirements-Production.md §1) — date/shift-level output against an activity =====
+
+router.post('/schedules/:id/daily-entries', requireRole(ROLES.PRODUCTION, ROLES.SHOP_FLOOR_ENGINEER, ROLES.ADMIN), validate(dailyProductionEntrySchema), asyncHandler(async (req, res) => {
+  const { rows: scheduleRows } = await pool.query(`SELECT id FROM production_schedules WHERE id = $1`, [req.params.id]);
+  if (!scheduleRows.length) return res.status(404).json({ error: 'Schedule not found' });
+
+  const { entry_date, shift, engineer, planned_qty, actual_qty } = req.body;
+  const balance_qty = Number(planned_qty) - Number(actual_qty);
+  const { rows } = await pool.query(
+    `INSERT INTO daily_production_entries (schedule_id, entry_date, shift, engineer, planned_qty, actual_qty, balance_qty)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+    [req.params.id, entry_date, shift, engineer, planned_qty, actual_qty, balance_qty]
   );
   res.status(201).json(rows[0]);
 }));

@@ -11,7 +11,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DataTable from '../components/DataTable.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import RHFSelect from '../components/form/RHFSelect.jsx';
-import { scheduleStatusSchema, stageInspectionSchema, reworkRejectionSchema } from '../validation/schemas.js';
+import { scheduleStatusSchema, stageInspectionSchema, reworkRejectionSchema, dailyProductionEntrySchema } from '../validation/schemas.js';
 import { applyServerErrors } from '../utils/applyServerErrors.js';
 import { api } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -52,6 +52,7 @@ export default function ScheduleDetailPage() {
   const [actionError, setActionError] = useState('');
   const [inspectionOpen, setInspectionOpen] = useState(false);
   const [reworkOpen, setReworkOpen] = useState(false);
+  const [entryOpen, setEntryOpen] = useState(false);
 
   const load = () => {
     api.get(`/production/schedules/${id}`).then((res) => setSchedule(res.data)).catch(() => setSchedule(null));
@@ -71,6 +72,10 @@ export default function ScheduleDetailPage() {
     resolver: zodResolver(reworkRejectionSchema),
     defaultValues: { part_name: '', quantity_produced: '', rework_qty: '0', rejection_qty: '0', reason: '', corrective_action: '', responsible_engineer: user?.name || '' },
   });
+  const entryForm = useForm({
+    resolver: zodResolver(dailyProductionEntrySchema),
+    defaultValues: { entry_date: new Date().toISOString().slice(0, 10), shift: '', engineer: user?.name || '', planned_qty: '', actual_qty: '' },
+  });
 
   useEffect(() => {
     if (schedule) {
@@ -84,6 +89,7 @@ export default function ScheduleDetailPage() {
   const canUpdateStatus = ['PRODUCTION', 'SHOP_FLOOR_ENGINEER', 'ADMIN'].includes(user?.role);
   const canInspect = ['QUALITY', 'SHOP_FLOOR_ENGINEER', 'ADMIN'].includes(user?.role);
   const canLogRework = ['PRODUCTION', 'SHOP_FLOOR_ENGINEER', 'ADMIN'].includes(user?.role);
+  const canLogEntry = ['PRODUCTION', 'SHOP_FLOOR_ENGINEER', 'ADMIN'].includes(user?.role);
 
   const submitStatus = async (values) => {
     setActionError('');
@@ -119,6 +125,18 @@ export default function ScheduleDetailPage() {
     }
   };
 
+  const submitEntry = async (values) => {
+    setActionError('');
+    try {
+      await api.post(`/production/schedules/${id}/daily-entries`, values);
+      setEntryOpen(false);
+      entryForm.reset({ entry_date: new Date().toISOString().slice(0, 10), shift: '', engineer: user?.name || '', planned_qty: '', actual_qty: '' });
+      load();
+    } catch (err) {
+      applyServerErrors(err, entryForm.setError, setActionError);
+    }
+  };
+
   if (!schedule) return <Typography>Loading...</Typography>;
 
   const inspectionColumnDefs = [
@@ -135,6 +153,18 @@ export default function ScheduleDetailPage() {
     { field: 'rework_qty', headerName: 'Rework', type: 'numericColumn', minWidth: 90 },
     { field: 'rejection_qty', headerName: 'Rejected', type: 'numericColumn', minWidth: 90 },
     { field: 'reason', headerName: 'Reason', minWidth: 180 },
+  ];
+
+  const entryColumnDefs = [
+    { field: 'entry_date', headerName: 'Date', minWidth: 110, valueFormatter: (p) => new Date(p.value).toLocaleDateString() },
+    { field: 'shift', headerName: 'Shift', minWidth: 100 },
+    { field: 'engineer', headerName: 'Engineer', minWidth: 140 },
+    { field: 'planned_qty', headerName: 'Planned Qty', type: 'numericColumn', minWidth: 110 },
+    { field: 'actual_qty', headerName: 'Actual Qty', type: 'numericColumn', minWidth: 110 },
+    {
+      field: 'balance_qty', headerName: 'Balance Qty', type: 'numericColumn', minWidth: 110,
+      cellRenderer: (p) => <span style={{ color: Number(p.value) > 0 ? '#c62828' : 'inherit' }}>{p.value}</span>,
+    },
   ];
 
   return (
@@ -186,6 +216,13 @@ export default function ScheduleDetailPage() {
         )}
       </Section>
 
+      <Section title="Daily Production Entry">
+        <DataTable rowData={schedule.daily_entries} columnDefs={entryColumnDefs} pagination={false} height={Math.max(160, schedule.daily_entries.length * 56 + 60)} getRowId={(p) => String(p.data.id)} emptyMessage="No daily production entries yet." />
+        {canLogEntry && (
+          <Button startIcon={<AddIcon />} sx={{ mt: 1.5 }} onClick={() => setEntryOpen(true)}>Log Daily Entry</Button>
+        )}
+      </Section>
+
       <Dialog open={inspectionOpen} onClose={() => setInspectionOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Log Stage Inspection</DialogTitle>
         <DialogContent>
@@ -218,6 +255,23 @@ export default function ScheduleDetailPage() {
         <DialogActions>
           <Button onClick={() => setReworkOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={reworkForm.handleSubmit(submitRework)}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={entryOpen} onClose={() => setEntryOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Log Daily Production Entry</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <RHFTextField name="entry_date" control={entryForm.control} label="Date" type="date" required InputLabelProps={{ shrink: true }} />
+            <RHFTextField name="shift" control={entryForm.control} label="Shift" required />
+            <RHFTextField name="engineer" control={entryForm.control} label="Engineer" required />
+            <RHFTextField name="planned_qty" control={entryForm.control} label="Planned Quantity" type="number" required />
+            <RHFTextField name="actual_qty" control={entryForm.control} label="Actual Quantity" type="number" required />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEntryOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={entryForm.handleSubmit(submitEntry)}>Save</Button>
         </DialogActions>
       </Dialog>
     </Box>

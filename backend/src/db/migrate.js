@@ -211,6 +211,23 @@ const MIGRATIONS = [
       WHERE NOT EXISTS (SELECT 1 FROM drawing_revisions WHERE drawing_revisions.drawing_id = drawings.id);
     `,
   },
+  {
+    name: '010_daily_production_entries',
+    sql: `
+      CREATE TABLE IF NOT EXISTS daily_production_entries (
+        id SERIAL PRIMARY KEY,
+        schedule_id INTEGER NOT NULL REFERENCES production_schedules(id),
+        entry_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        shift VARCHAR(50) NOT NULL,
+        engineer VARCHAR(100) NOT NULL,
+        planned_qty NUMERIC(12,2) NOT NULL CHECK (planned_qty > 0),
+        actual_qty NUMERIC(12,2) NOT NULL CHECK (actual_qty >= 0),
+        balance_qty NUMERIC(12,2) NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_daily_production_entries_schedule ON daily_production_entries(schedule_id);
+    `,
+  },
 ];
 
 async function ensureMigrationsTable(client) {
