@@ -74,7 +74,7 @@ Cross-checked all 8 `Requirements-*.md` docs against the actual schema/routes/fr
 
 ### Tier 1 — whole entities missing
 
-- [ ] **Design: Design Input Sheet entity** (Customer Spec, Process Data, Layout Drawing, Standards, Material Spec, Corrosion Allowance, Design Pressure, Notes, Attachments) — pipeline step before Calculation, currently skipped entirely.
+- [x] **Design: Design Input Sheet entity.** ~~pipeline step before Calculation, currently skipped entirely~~ — Fixed 2026-08-22. New `design_input_sheets` table (migration `007`), one per drawing (this schema's stand-in for "Design Project"): Customer Specification, Process Data, Applicable Standards, Material Specification, Corrosion Allowance, Design Pressure, an optional self-referencing Previous Reference Drawing, Design Notes, plus real file attachments via the upload capability above. `POST/PATCH /drawings/:id/input-sheet` for create/edit while DRAFT; `PATCH .../input-sheet/status` enforces AC1 server-side (cannot mark Completed without Customer Specification and Applicable Standards). Verified live: null before creation, duplicate creation rejected, completion blocked until required fields present then succeeds once they are, self-reference resolves correctly, editing a Completed sheet rejected, attachment upload round-trips.
 - [ ] **Design: Design Calculation entity** (Calculation Number, Formula Reference, Safety Factor, Load/Shaft/Bearing/Motor/Gearbox calcs) — also currently skipped.
 - [ ] **Design: real document-control/revision history.** Only a single `revision` string on `drawings`; no per-revision record of prepared/checked/approved-by + date (§5).
 - [ ] **Production: Daily Production Entry** (date, planned/actual/balance qty, shift, engineer) — no table.
