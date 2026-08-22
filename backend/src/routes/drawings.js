@@ -38,7 +38,24 @@ router.get('/:id', asyncHandler(async (req, res) => {
   if (restricted && rows[0].status !== 'RELEASED') return res.status(404).json({ error: 'Drawing not found' });
 
   const { rows: bomLines } = await pool.query(`SELECT * FROM bom_lines WHERE drawing_id = $1 ORDER BY item_no`, [req.params.id]);
-  const { rows: ecns } = await pool.query(`SELECT * FROM engineering_change_notices WHERE drawing_id = $1 ORDER BY created_at DESC`, [req.params.id]);
+  // ECNs affecting this drawing (Affected Drawings is a list, Requirements-Design.md §1) — each ECN
+  // also carries its full affected_drawings array so the UI can show every drawing it touches
+  const { rows: ecns } = await pool.query(
+    `SELECT ecn.*, ead.previous_revision, ead.new_revision
+     FROM engineering_change_notices ecn
+     JOIN ecn_affected_drawings ead ON ead.ecn_id = ecn.id AND ead.drawing_id = $1
+     ORDER BY ecn.created_at DESC`,
+    [req.params.id]
+  );
+  if (ecns.length) {
+    const { rows: allAffected } = await pool.query(
+      `SELECT ead.*, d.drawing_number FROM ecn_affected_drawings ead JOIN drawings d ON d.id = ead.drawing_id WHERE ead.ecn_id = ANY($1::int[])`,
+      [ecns.map((e) => e.id)]
+    );
+    const byEcn = {};
+    for (const a of allAffected) (byEcn[a.ecn_id] ??= []).push(a);
+    for (const ecn of ecns) ecn.affected_drawings = byEcn[ecn.id] || [];
+  }
   const { rows: inputSheetRows } = await pool.query(
     `SELECT dis.*, d.drawing_number AS previous_reference_drawing_number
      FROM design_input_sheets dis
@@ -275,26 +292,45 @@ router.patch('/:id/release', requireRole(ROLES.DESIGN_HEAD, ROLES.ADMIN), asyncH
   res.json(rows[0]);
 }));
 
-// ECN — can only be raised against an already-released drawing; approving creates a new revision (append-only)
+// ECN — Affected Drawings is a list (Requirements-Design.md §1); every drawing named must already be
+// Released, and the drawing this ECN is raised from (the URL's :id) must be one of them. Approving
+// bumps every affected drawing's revision and appends a drawing_revisions row for each (append-only).
 router.post('/:id/ecns', requireRole(ROLES.DESIGN_HEAD, ROLES.ADMIN), validate(ecnSchema), asyncHandler(async (req, res) => {
+  const { reason_for_change, requested_by, remarks, affected_drawings } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const { rows: drawingRows } = await client.query(`SELECT * FROM drawings WHERE id = $1 FOR UPDATE`, [req.params.id]);
-    if (!drawingRows.length) throw new Error('Drawing not found');
-    if (drawingRows[0].status !== 'RELEASED') throw new Error('ECN can only be raised against a released drawing');
+    const primaryId = Number(req.params.id);
+    if (!affected_drawings.some((d) => Number(d.drawing_id) === primaryId)) {
+      throw new Error('Affected drawings must include the drawing this ECN is being raised from');
+    }
 
     const ecn_number = await nextNumber(client, 'engineering_change_notices', 'ecn_number', 'ECN');
-    const { reason_for_change, requested_by, new_revision, remarks } = req.body;
-    const { rows } = await client.query(
-      `INSERT INTO engineering_change_notices (ecn_number, drawing_id, reason_for_change, requested_by, previous_revision, new_revision, remarks)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [ecn_number, req.params.id, reason_for_change, requested_by, drawingRows[0].revision, new_revision, remarks || null]
+    const { rows: ecnRows } = await client.query(
+      `INSERT INTO engineering_change_notices (ecn_number, reason_for_change, requested_by, remarks)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [ecn_number, reason_for_change, requested_by, remarks || null]
     );
+    const ecn = ecnRows[0];
+
+    const affected = [];
+    for (const d of affected_drawings) {
+      const { rows: drawingRows } = await client.query(`SELECT * FROM drawings WHERE id = $1 FOR UPDATE`, [d.drawing_id]);
+      if (!drawingRows.length) throw new Error(`Drawing #${d.drawing_id} not found`);
+      if (drawingRows[0].status !== 'RELEASED') throw new Error(`${drawingRows[0].drawing_number} is not Released — ECN can only be raised against released drawings`);
+
+      const { rows: linkRows } = await client.query(
+        `INSERT INTO ecn_affected_drawings (ecn_id, drawing_id, previous_revision, new_revision)
+         VALUES ($1, $2, $3, $4) RETURNING *`,
+        [ecn.id, d.drawing_id, drawingRows[0].revision, d.new_revision]
+      );
+      affected.push({ ...linkRows[0], drawing_number: drawingRows[0].drawing_number });
+    }
     await client.query('COMMIT');
-    res.status(201).json(rows[0]);
+    res.status(201).json({ ...ecn, affected_drawings: affected });
   } catch (err) {
     await client.query('ROLLBACK');
+    if (err.code === '23505') return res.status(400).json({ error: 'This ECN already lists that drawing more than once' });
     res.status(400).json({ error: err.message });
   } finally {
     client.release();
@@ -306,23 +342,35 @@ router.patch('/:id/ecns/:ecnId/approve', requireRole(ROLES.DESIGN_HEAD, ROLES.AD
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    const { rows: affectsRows } = await client.query(
+      `SELECT 1 FROM ecn_affected_drawings WHERE ecn_id = $1 AND drawing_id = $2`,
+      [req.params.ecnId, req.params.id]
+    );
+    if (!affectsRows.length) throw new Error('This ECN does not affect the specified drawing');
+
     const { rows: ecnRows } = await client.query(
       `UPDATE engineering_change_notices SET status = $1, approved_by = $2, approved_at = now()
-       WHERE id = $3 AND drawing_id = $4 AND status = 'PENDING' RETURNING *`,
-      [status, req.user.name, req.params.ecnId, req.params.id]
+       WHERE id = $3 AND status = 'PENDING' RETURNING *`,
+      [status, req.user.name, req.params.ecnId]
     );
     if (!ecnRows.length) throw new Error('ECN not found or already actioned');
+    const ecn = ecnRows[0];
 
+    let affected = [];
     if (status === 'APPROVED') {
-      await client.query(`UPDATE drawings SET revision = $1 WHERE id = $2`, [ecnRows[0].new_revision, req.params.id]);
-      await client.query(
-        `INSERT INTO drawing_revisions (drawing_id, revision_number, revision_description, prepared_by, approved_by, ecn_id)
-         VALUES ($1, $2, $3, $4, $5, $6)`,
-        [req.params.id, ecnRows[0].new_revision, ecnRows[0].reason_for_change, ecnRows[0].requested_by, req.user.name, ecnRows[0].id]
-      );
+      const { rows: links } = await client.query(`SELECT * FROM ecn_affected_drawings WHERE ecn_id = $1`, [ecn.id]);
+      for (const link of links) {
+        await client.query(`UPDATE drawings SET revision = $1 WHERE id = $2`, [link.new_revision, link.drawing_id]);
+        await client.query(
+          `INSERT INTO drawing_revisions (drawing_id, revision_number, revision_description, prepared_by, approved_by, ecn_id)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [link.drawing_id, link.new_revision, ecn.reason_for_change, ecn.requested_by, req.user.name, ecn.id]
+        );
+      }
+      affected = links;
     }
     await client.query('COMMIT');
-    res.json(ecnRows[0]);
+    res.json({ ...ecn, affected_drawings: affected });
   } catch (err) {
     await client.query('ROLLBACK');
     res.status(400).json({ error: err.message });

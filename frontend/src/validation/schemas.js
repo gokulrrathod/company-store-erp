@@ -199,8 +199,11 @@ export const bomLineSchema = z.object({
 export const ecnSchema = z.object({
   reason_for_change: requiredString('Reason for change', 500),
   requested_by: requiredString('Requested by', 100),
-  new_revision: requiredString('New revision', 20),
   remarks: optionalString(500),
+  affected_drawings: z.array(z.object({
+    drawing_id: z.union([z.string(), z.number()]).refine((v) => v !== '' && v != null, 'Select a drawing'),
+    new_revision: requiredString('New revision', 20),
+  })).min(1, 'Select at least one affected drawing'),
 });
 
 export const designCalculationSchema = z.object({

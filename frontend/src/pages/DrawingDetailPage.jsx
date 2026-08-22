@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Box, Typography, Chip, Button, Stack, Alert, IconButton, Paper, Grid, Divider,
@@ -8,6 +8,7 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DataTable from '../components/DataTable.jsx';
 import AttachmentsPanel from '../components/AttachmentsPanel.jsx';
@@ -82,8 +83,9 @@ export default function DrawingDetailPage() {
   });
   const ecnForm = useForm({
     resolver: zodResolver(ecnSchema),
-    defaultValues: { reason_for_change: '', requested_by: user?.name || '', new_revision: '', remarks: '' },
+    defaultValues: { reason_for_change: '', requested_by: user?.name || '', remarks: '', affected_drawings: [{ drawing_id: '', new_revision: '' }] },
   });
+  const { fields: affectedFields, append: appendAffected, remove: removeAffected } = useFieldArray({ control: ecnForm.control, name: 'affected_drawings' });
 
   const isEngineer = ['DESIGN_ENGINEER', 'ADMIN'].includes(user?.role);
   const isChecker = ['CHECKER', 'ADMIN'].includes(user?.role);
@@ -212,12 +214,19 @@ export default function DrawingDetailPage() {
     }
   };
 
+  const openEcn = () => {
+    ecnForm.reset({
+      reason_for_change: '', requested_by: user?.name || '', remarks: '',
+      affected_drawings: [{ drawing_id: drawing.id, new_revision: '' }],
+    });
+    setEcnOpen(true);
+  };
+
   const raiseEcn = async (values) => {
     setActionError('');
     try {
       await api.post(`/drawings/${id}/ecns`, values);
       setEcnOpen(false);
-      ecnForm.reset({ reason_for_change: '', requested_by: user?.name || '', new_revision: '', remarks: '' });
       load();
     } catch (err) {
       applyServerErrors(err, ecnForm.setError, setActionError);
@@ -277,6 +286,10 @@ export default function DrawingDetailPage() {
     { field: 'reason_for_change', headerName: 'Reason', minWidth: 220 },
     { field: 'previous_revision', headerName: 'From Rev', minWidth: 100 },
     { field: 'new_revision', headerName: 'To Rev', minWidth: 100 },
+    {
+      headerName: 'Affected Drawings', minWidth: 220,
+      valueGetter: (p) => (p.data.affected_drawings || []).map((a) => `${a.drawing_number} (${a.previous_revision}→${a.new_revision})`).join(', '),
+    },
     { field: 'status', headerName: 'Status', minWidth: 110 },
     ...(isDesignHead
       ? [{
@@ -484,7 +497,7 @@ export default function DrawingDetailPage() {
         <Section title="Engineering Change Notices (ECN)">
           <DataTable rowData={drawing.ecns} columnDefs={ecnColumnDefs} pagination={false} height={Math.max(160, drawing.ecns.length * 56 + 60)} getRowId={(p) => String(p.data.id)} emptyMessage="No ECNs raised." />
           {isDesignHead && (
-            <Button startIcon={<AddIcon />} sx={{ mt: 1.5 }} onClick={() => setEcnOpen(true)}>Raise ECN</Button>
+            <Button startIcon={<AddIcon />} sx={{ mt: 1.5 }} onClick={openEcn}>Raise ECN</Button>
           )}
         </Section>
       )}
@@ -531,7 +544,33 @@ export default function DrawingDetailPage() {
           <Stack spacing={2} sx={{ mt: 1 }}>
             <RHFTextField name="reason_for_change" control={ecnForm.control} label="Reason for Change" required multiline rows={2} />
             <RHFTextField name="requested_by" control={ecnForm.control} label="Requested By" required />
-            <RHFTextField name="new_revision" control={ecnForm.control} label="New Revision" required />
+
+            <Typography variant="subtitle2" fontWeight={700}>Affected Drawings</Typography>
+            {ecnForm.formState.errors.affected_drawings?.root && (
+              <Typography variant="caption" color="error">{ecnForm.formState.errors.affected_drawings.root.message}</Typography>
+            )}
+            {ecnForm.formState.errors.affected_drawings?.message && (
+              <Typography variant="caption" color="error">{ecnForm.formState.errors.affected_drawings.message}</Typography>
+            )}
+            <Stack spacing={1.5}>
+              {affectedFields.map((field, idx) => (
+                <Stack direction="row" spacing={1} key={field.id} alignItems="flex-start">
+                  <RHFSelect
+                    name={`affected_drawings.${idx}.drawing_id`} control={ecnForm.control} label="Drawing" required
+                    options={allDrawings.filter((d) => d.status === 'RELEASED')} getLabel={(d) => `${d.drawing_number} (Rev ${d.revision})`} getValue={(d) => d.id}
+                    sx={{ flex: 2 }}
+                  />
+                  <RHFTextField name={`affected_drawings.${idx}.new_revision`} control={ecnForm.control} label="New Revision" required sx={{ flex: 1 }} />
+                  <IconButton color="error" onClick={() => removeAffected(idx)} disabled={affectedFields.length === 1} sx={{ mt: 1 }}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Stack>
+              ))}
+              <Button startIcon={<AddIcon />} onClick={() => appendAffected({ drawing_id: '', new_revision: '' })} sx={{ alignSelf: 'flex-start' }}>
+                Add Affected Drawing
+              </Button>
+            </Stack>
+
             <RHFTextField name="remarks" control={ecnForm.control} label="Remarks" multiline rows={2} />
           </Stack>
         </DialogContent>

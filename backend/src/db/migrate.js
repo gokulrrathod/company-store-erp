@@ -376,6 +376,31 @@ const MIGRATIONS = [
         CHECK (status IN ('OPEN', 'PARTIALLY_RECEIVED', 'CLOSED', 'AMENDED'));
     `,
   },
+  {
+    name: '016_ecn_multiple_affected_drawings',
+    sql: `
+      CREATE TABLE IF NOT EXISTS ecn_affected_drawings (
+        id SERIAL PRIMARY KEY,
+        ecn_id INTEGER NOT NULL REFERENCES engineering_change_notices(id),
+        drawing_id INTEGER NOT NULL REFERENCES drawings(id),
+        previous_revision VARCHAR(20) NOT NULL,
+        new_revision VARCHAR(20) NOT NULL,
+        UNIQUE (ecn_id, drawing_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_ecn_affected_drawings_ecn ON ecn_affected_drawings(ecn_id);
+      CREATE INDEX IF NOT EXISTS idx_ecn_affected_drawings_drawing ON ecn_affected_drawings(drawing_id);
+
+      INSERT INTO ecn_affected_drawings (ecn_id, drawing_id, previous_revision, new_revision)
+      SELECT id, drawing_id, previous_revision, new_revision FROM engineering_change_notices
+      WHERE NOT EXISTS (
+        SELECT 1 FROM ecn_affected_drawings WHERE ecn_affected_drawings.ecn_id = engineering_change_notices.id
+      );
+
+      ALTER TABLE engineering_change_notices DROP COLUMN IF EXISTS drawing_id;
+      ALTER TABLE engineering_change_notices DROP COLUMN IF EXISTS previous_revision;
+      ALTER TABLE engineering_change_notices DROP COLUMN IF EXISTS new_revision;
+    `,
+  },
 ];
 
 async function ensureMigrationsTable(client) {

@@ -376,23 +376,32 @@ CREATE TABLE IF NOT EXISTS bom_lines (
 );
 
 -- Engineering Change Notices — revisions are append-only, never overwrite a prior one
+-- Affected Drawings is a list (Requirements-Design.md §1: "Affected Drawings | FK[] -> Drawing"),
+-- so previous/new revision live per-drawing in ecn_affected_drawings below, not on this header.
 CREATE TABLE IF NOT EXISTS engineering_change_notices (
     id SERIAL PRIMARY KEY,
     ecn_number VARCHAR(50) NOT NULL UNIQUE,
-    drawing_id INTEGER NOT NULL REFERENCES drawings(id),
     reason_for_change VARCHAR(500) NOT NULL,
     requested_by VARCHAR(100) NOT NULL,
     approved_by VARCHAR(100),
     approved_at TIMESTAMPTZ,
-    previous_revision VARCHAR(20) NOT NULL,
-    new_revision VARCHAR(20) NOT NULL,
     remarks VARCHAR(500),
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS ecn_affected_drawings (
+    id SERIAL PRIMARY KEY,
+    ecn_id INTEGER NOT NULL REFERENCES engineering_change_notices(id),
+    drawing_id INTEGER NOT NULL REFERENCES drawings(id),
+    previous_revision VARCHAR(20) NOT NULL,
+    new_revision VARCHAR(20) NOT NULL,
+    UNIQUE (ecn_id, drawing_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_bom_lines_drawing ON bom_lines(drawing_id);
-CREATE INDEX IF NOT EXISTS idx_ecns_drawing ON engineering_change_notices(drawing_id);
+CREATE INDEX IF NOT EXISTS idx_ecn_affected_drawings_ecn ON ecn_affected_drawings(ecn_id);
+CREATE INDEX IF NOT EXISTS idx_ecn_affected_drawings_drawing ON ecn_affected_drawings(drawing_id);
 
 -- Document Control (§5): one row per revision, append-only - a new ECN creates a
 -- new row here rather than overwriting drawings.revision's history
