@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Box, Typography, Button, Stack, Chip, IconButton, Paper, Avatar } from '@mui/material';
+import { useEffect, useMemo, useState } from 'react';
+import { Box, Typography, Button, Stack, Chip, IconButton, Paper, Avatar, TextField, MenuItem } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useNavigate } from 'react-router-dom';
 import ListPageLayout from '../components/ListPageLayout.jsx';
 import { api } from '../api/client.js';
@@ -91,16 +93,29 @@ function ReceiptCard({ receipt, onView }) {
   );
 }
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+
 export default function GoodsReceiptPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [receipts, setReceipts] = useState([]);
+  const [pageSize, setPageSize] = useState(20);
+  const [page, setPage] = useState(0);
 
   useEffect(() => {
     api.get('/material-receipts').then((res) => setReceipts(res.data)).catch(() => setReceipts([]));
   }, []);
 
   const canCreate = ['STORE_EXECUTIVE', 'STORE_MANAGER', 'ADMIN'].includes(user?.role);
+
+  const totalPages = Math.max(1, Math.ceil(receipts.length / pageSize));
+  const clampedPage = Math.min(page, totalPages - 1);
+  const pageReceipts = useMemo(
+    () => receipts.slice(clampedPage * pageSize, clampedPage * pageSize + pageSize),
+    [receipts, clampedPage, pageSize]
+  );
+  const rangeStart = receipts.length === 0 ? 0 : clampedPage * pageSize + 1;
+  const rangeEnd = Math.min(receipts.length, clampedPage * pageSize + pageSize);
 
   return (
     <ListPageLayout
@@ -115,13 +130,44 @@ export default function GoodsReceiptPage() {
         </Stack>
       }
     >
-      <Box sx={{ height: '100%', overflow: 'auto', pr: 0.5 }}>
-        {receipts.length === 0 && (
-          <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>No receipts recorded yet.</Typography>
+      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', pr: 0.5 }}>
+          {receipts.length === 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>No receipts recorded yet.</Typography>
+          )}
+          {pageReceipts.map((r) => (
+            <ReceiptCard key={r.id} receipt={r} onView={(id) => navigate(`/goods-receipt/${id}`)} />
+          ))}
+        </Box>
+
+        {receipts.length > 0 && (
+          <Box sx={{
+            flexShrink: 0, display: 'flex', alignItems: 'center', gap: 2,
+            px: 1, py: 1, borderTop: '1px solid', borderColor: 'divider',
+          }}>
+            <Stack direction="row" alignItems="center" gap={1}>
+              <Typography variant="body2" color="text.secondary">Page Size:</Typography>
+              <TextField
+                select size="small" value={pageSize}
+                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
+                sx={{ width: 90 }}
+              >
+                {PAGE_SIZE_OPTIONS.map((n) => <MenuItem key={n} value={n}>{n}</MenuItem>)}
+              </TextField>
+            </Stack>
+            <Box sx={{ flexGrow: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              {rangeStart} to {rangeEnd} of {receipts.length}
+            </Typography>
+            <IconButton size="small" disabled={clampedPage === 0} onClick={() => setPage(clampedPage - 1)}>
+              <ChevronLeftIcon fontSize="small" />
+            </IconButton>
+            <Typography variant="body2" color="text.secondary">Page {clampedPage + 1} of {totalPages}</Typography>
+            <IconButton size="small" disabled={clampedPage >= totalPages - 1} onClick={() => setPage(clampedPage + 1)}>
+              <ChevronRightIcon fontSize="small" />
+            </IconButton>
+          </Box>
         )}
-        {receipts.map((r) => (
-          <ReceiptCard key={r.id} receipt={r} onView={(id) => navigate(`/goods-receipt/${id}`)} />
-        ))}
       </Box>
     </ListPageLayout>
   );
