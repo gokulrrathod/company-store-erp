@@ -10,6 +10,7 @@ router.get('/summary', asyncHandler(async (req, res) => {
   const [
     stockVal, skuCount, lowStock, rejected, pendingInspection, pendingRequests, recentReceipts,
     dailyMovements, monthlyConsumption, expiringMaterials, accuracy, warehouseUtilization,
+    lowStockByCategory, valueByCategory, grnStatusBreakdown, sevenDayTrend,
   ] = await Promise.all([
     pool.query(`SELECT COALESCE(SUM(quantity * unit_rate), 0) AS total FROM items`),
     pool.query(`SELECT COUNT(*) AS total FROM items`),
@@ -57,6 +58,32 @@ router.get('/summary', asyncHandler(async (req, res) => {
          COUNT(*) FILTER (WHERE warehouse IS NOT NULL AND warehouse != '') AS located
        FROM items`
     ),
+    // Chart: Low Stock by Category
+    pool.query(
+      `SELECT c.name AS category_name, COUNT(*) AS total
+       FROM items i JOIN categories c ON c.id = i.category_id
+       WHERE i.quantity <= i.reorder_level
+       GROUP BY c.name ORDER BY total DESC`
+    ),
+    // Chart: Inventory Value by Category
+    pool.query(
+      `SELECT c.name AS category_name, COALESCE(SUM(i.quantity * i.unit_rate), 0) AS value
+       FROM items i JOIN categories c ON c.id = i.category_id
+       GROUP BY c.name ORDER BY value DESC`
+    ),
+    // Chart: GRN Status breakdown
+    pool.query(
+      `SELECT status, COUNT(*) AS total FROM material_receipts GROUP BY status`
+    ),
+    // Chart: Inward vs Outward, last 7 days (zero-filled)
+    pool.query(
+      `SELECT d::date AS day,
+         COALESCE(SUM(sm.quantity) FILTER (WHERE sm.type = 'IN'), 0) AS inward,
+         COALESCE(SUM(sm.quantity) FILTER (WHERE sm.type = 'OUT'), 0) AS outward
+       FROM generate_series(CURRENT_DATE - INTERVAL '6 days', CURRENT_DATE, INTERVAL '1 day') d
+       LEFT JOIN stock_movements sm ON sm.created_at::date = d::date
+       GROUP BY d ORDER BY d`
+    ),
   ]);
 
   const accuracyTotal = Number(accuracy.rows[0].total);
@@ -76,6 +103,10 @@ router.get('/summary', asyncHandler(async (req, res) => {
     expiring_materials_count: Number(expiringMaterials.rows[0].total),
     inventory_accuracy_percent: accuracyTotal ? Math.round((Number(accuracy.rows[0].clean) / accuracyTotal) * 1000) / 10 : 100,
     warehouse_utilization_percent: warehouseTotal ? Math.round((Number(warehouseUtilization.rows[0].located) / warehouseTotal) * 1000) / 10 : 0,
+    low_stock_by_category: lowStockByCategory.rows.map((r) => ({ category_name: r.category_name, count: Number(r.total) })),
+    value_by_category: valueByCategory.rows.map((r) => ({ category_name: r.category_name, value: Number(r.value) })),
+    grn_status_breakdown: grnStatusBreakdown.rows.map((r) => ({ status: r.status, count: Number(r.total) })),
+    seven_day_trend: sevenDayTrend.rows.map((r) => ({ day: r.day, inward: Number(r.inward), outward: Number(r.outward) })),
   });
 }));
 
