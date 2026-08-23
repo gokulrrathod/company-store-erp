@@ -83,7 +83,8 @@ export default function DataTable({
     <Box
       className="ag-theme-quartz"
       sx={{
-        height: fillHeight ? `min(${height}px, 100%)` : height,
+        height: fillHeight ? '100%' : height,
+        flex: fillHeight ? 1 : undefined,
         minHeight: fillHeight ? 0 : undefined,
         width: '100%',
         '--ag-active-color': '#4F46E5',
