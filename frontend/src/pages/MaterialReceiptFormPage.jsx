@@ -40,7 +40,7 @@ export default function MaterialReceiptFormPage() {
   const onSubmit = async (values) => {
     setFormError('');
     try {
-      await api.post('/material-receipts', { ...values, po_id: values.po_id || null });
+      await api.post('/material-receipts', values);
       navigate('/goods-receipt');
     } catch (err) {
       applyServerErrors(err, setError, setFormError);
@@ -64,8 +64,8 @@ export default function MaterialReceiptFormPage() {
     >
       <Grid container spacing={2.5}>
         <Grid item xs={12} sm={4}>
-          <RHFSelectWithNone
-            name="po_id" control={control} label="Purchase Order (optional)"
+          <RHFSelect
+            name="po_id" control={control} label="Purchase Order" required
             options={purchaseOrders} getLabel={(po) => `${po.po_number} — ${po.supplier_name}`} getValue={(po) => po.id}
           />
         </Grid>
@@ -118,15 +118,5 @@ export default function MaterialReceiptFormPage() {
         </Button>
       </Stack>
     </FormPage>
-  );
-}
-
-function RHFSelectWithNone({ name, control, label, options, getLabel, getValue, ...props }) {
-  return (
-    <RHFSelect name={name} control={control} label={label} options={[{ __none: true }, ...options]}
-      getLabel={(o) => (o.__none ? '— None —' : getLabel(o))}
-      getValue={(o) => (o.__none ? '' : getValue(o))}
-      {...props}
-    />
   );
 }

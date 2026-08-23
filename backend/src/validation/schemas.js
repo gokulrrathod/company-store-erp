@@ -55,7 +55,7 @@ export const materialRequestSchema = z.object({
   quantity_requested: positiveNumber,
   purpose: optionalString(200),
   remarks: optionalString(500),
-  project_id: optionalPositiveId,
+  project_id: z.coerce.number().int().positive('Select a project'),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
   required_date: optionalString(20),
 });
@@ -93,7 +93,7 @@ const receiptLineSchema = z.object({
 });
 
 export const materialReceiptSchema = z.object({
-  po_id: optionalPositiveId,
+  po_id: z.coerce.number().int().positive('Select a purchase order'),
   supplier_id: z.coerce.number().int().positive('Select a supplier'),
   invoice_number: optionalString(100),
   lines: z.array(receiptLineSchema).min(1, 'Add at least one received item'),
@@ -108,7 +108,7 @@ export const inspectLineSchema = z.object({
 });
 
 export const rejectedMaterialSchema = z.object({
-  supplier_id: optionalPositiveId,
+  supplier_id: z.coerce.number().int().positive('Select a supplier'),
   item_id: z.coerce.number().int().positive('Select an item'),
   batch_number: optionalString(100),
   quantity: positiveNumber,

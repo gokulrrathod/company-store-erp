@@ -268,7 +268,7 @@ export default function MaterialRequestsPage() {
             <RHFSelect name="item_id" control={control} label="Item" required options={items} getLabel={(i) => `${i.code} — ${i.name}`} getValue={(i) => i.id} />
             <RHFTextField name="requested_by" control={control} label="Requested By" required />
             <RHFTextField name="quantity_requested" control={control} label="Quantity Requested" type="number" required />
-            <RHFSelect name="project_id" control={control} label="Project (optional)" options={projects} getLabel={(p) => p.project_name} getValue={(p) => p.id} />
+            <RHFSelect name="project_id" control={control} label="Project" required options={projects} getLabel={(p) => p.project_name} getValue={(p) => p.id} />
             <RHFSelect name="priority" control={control} label="Priority" options={PRIORITIES} getLabel={(p) => p.label} getValue={(p) => p.value} />
             <RHFTextField name="required_date" control={control} label="Required Date" type="date" InputLabelProps={{ shrink: true }} />
             <RHFTextField name="purpose" control={control} label="Purpose" />

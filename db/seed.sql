@@ -44,6 +44,10 @@ INSERT INTO suppliers (name, contact_person, phone, email, vendor_type, gst_numb
     ('Test Supplier Two', 'Supplier Contact 2', '9000000002', 'contact2@testsupplier.com', 'MATERIAL_SUPPLIER', '27BBBBB0000B1Z5', 'BBBBB0000B', 'ACTIVE', 4.0, 'Management User', now())
 ON CONFLICT DO NOTHING;
 
+INSERT INTO projects (project_name, client_name, site_location, project_type, project_manager, site_engineer, status) VALUES
+    ('Sugar Mill Expansion — Baramati', 'Demo Sugar Mills Pvt Ltd', 'Baramati, Maharashtra', 'Equipment Fabrication', 'Project Manager', 'Site Engineer', 'RUNNING')
+ON CONFLICT DO NOTHING;
+
 INSERT INTO budgets (department, allocated_amount, utilized_amount) VALUES
     ('Purchase', 500000, 0),
     ('Production', 300000, 0),

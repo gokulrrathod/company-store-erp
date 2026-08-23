@@ -42,7 +42,7 @@ export default function RejectedMaterialFormPage() {
   const onSubmit = async (values) => {
     setFormError('');
     try {
-      await api.post('/rejected-materials', { ...values, supplier_id: values.supplier_id || null, disposal_date: values.disposal_date || null });
+      await api.post('/rejected-materials', { ...values, disposal_date: values.disposal_date || null });
       navigate('/rejected-material');
     } catch (err) {
       applyServerErrors(err, setError, setFormError);
@@ -67,8 +67,8 @@ export default function RejectedMaterialFormPage() {
       <Grid container spacing={2.5}>
         <Grid item xs={12} sm={6}>
           <RHFSelect
-            name="supplier_id" control={control} label="Supplier"
-            options={[{ id: '', name: '— None —' }, ...suppliers]} getLabel={(s) => s.name} getValue={(s) => s.id}
+            name="supplier_id" control={control} label="Supplier" required
+            options={suppliers} getLabel={(s) => s.name} getValue={(s) => s.id}
           />
         </Grid>
         <Grid item xs={12} sm={6}>

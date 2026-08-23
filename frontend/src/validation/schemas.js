@@ -45,7 +45,7 @@ export const materialRequestSchema = z.object({
   quantity_requested: positiveNumber,
   purpose: optionalString(200),
   remarks: optionalString(500),
-  project_id: z.union([z.string(), z.number()]).optional().nullable(),
+  project_id: z.union([z.string(), z.number()]).refine((v) => v !== '' && v != null, 'Select a project'),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
   required_date: optionalString(20),
 });
@@ -68,7 +68,7 @@ export const poAmendSchema = z.object({
 });
 
 export const materialReceiptSchema = z.object({
-  po_id: z.union([z.string(), z.number()]).optional().nullable(),
+  po_id: z.union([z.string(), z.number()]).refine((v) => v !== '' && v != null, 'Select a purchase order'),
   supplier_id: z.union([z.string(), z.number()]).refine((v) => v !== '' && v != null, 'Select a supplier'),
   invoice_number: optionalString(100),
   lines: z.array(z.object({
@@ -80,7 +80,7 @@ export const materialReceiptSchema = z.object({
 });
 
 export const rejectedMaterialSchema = z.object({
-  supplier_id: z.union([z.string(), z.number()]).optional().nullable(),
+  supplier_id: z.union([z.string(), z.number()]).refine((v) => v !== '' && v != null, 'Select a supplier'),
   item_id: z.union([z.string(), z.number()]).refine((v) => v !== '' && v != null, 'Select an item'),
   batch_number: optionalString(100),
   quantity: positiveNumber,
