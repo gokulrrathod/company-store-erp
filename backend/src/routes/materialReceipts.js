@@ -21,10 +21,27 @@ async function nextGrnNumber(client) {
 
 router.get('/', asyncHandler(async (req, res) => {
   const { rows } = await pool.query(
-    `SELECT r.*, s.name AS supplier_name, po.po_number
+    `SELECT r.*, s.name AS supplier_name, po.po_number,
+       COALESCE(
+         json_agg(
+           json_build_object(
+             'id', rl.id,
+             'item_code', i.code,
+             'item_name', i.name,
+             'batch_number', rl.batch_number,
+             'quantity_ordered', rl.quantity_ordered,
+             'quantity_received', rl.quantity_received,
+             'unit', rl.unit,
+             'inspection_status', rl.inspection_status
+           ) ORDER BY rl.id
+         ) FILTER (WHERE rl.id IS NOT NULL), '[]'
+       ) AS lines
      FROM material_receipts r
      JOIN suppliers s ON s.id = r.supplier_id
      LEFT JOIN purchase_orders po ON po.id = r.po_id
+     LEFT JOIN receipt_lines rl ON rl.receipt_id = r.id
+     LEFT JOIN items i ON i.id = rl.item_id
+     GROUP BY r.id, s.name, po.po_number
      ORDER BY r.created_at DESC`
   );
   res.json(rows);
