@@ -20,11 +20,20 @@ export default function RejectedMaterialPage() {
 
   const columnDefs = [
     { field: 'rejection_number', headerName: 'Rejection No.', minWidth: 140 },
-    { field: 'supplier_name', headerName: 'Supplier', minWidth: 160, valueGetter: (p) => p.data.supplier_name || '—' },
+    {
+      field: 'supplier_name',
+      headerName: 'Supplier / Batch',
+      minWidth: 180,
+      cellRenderer: (p) => (
+        <div style={{ lineHeight: 1.35, padding: '6px 0' }}>
+          <div style={{ fontWeight: 600 }}>{p.data.supplier_name || '—'}</div>
+          <div style={{ fontSize: '0.72rem', color: '#64748B' }}>Batch {p.data.batch_number || '—'}</div>
+        </div>
+      ),
+    },
     { headerName: 'Item', minWidth: 180, valueGetter: (p) => `${p.data.item_code} — ${p.data.item_name}` },
-    { field: 'batch_number', headerName: 'Batch', minWidth: 120, valueGetter: (p) => p.data.batch_number || '—' },
     { field: 'quantity', headerName: 'Quantity', type: 'numericColumn', minWidth: 110 },
-    { field: 'reason', headerName: 'Reason', minWidth: 220 },
+    { field: 'reason', headerName: 'Reason', minWidth: 200, wrapText: true, autoHeight: true },
     {
       field: 'action_taken',
       headerName: 'Action Taken',
@@ -48,7 +57,7 @@ export default function RejectedMaterialPage() {
         </Stack>
       }
     >
-      <DataTable rowData={rejections} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} fillHeight />
+      <DataTable rowData={rejections} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} rowHeight={48} fillHeight />
     </ListPageLayout>
   );
 }

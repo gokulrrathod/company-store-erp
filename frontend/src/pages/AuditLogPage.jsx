@@ -23,11 +23,31 @@ export default function AuditLogPage() {
 
   const columnDefs = [
     { field: 'changed_at', headerName: 'When', minWidth: 170, valueFormatter: (p) => new Date(p.value).toLocaleString() },
-    { field: 'table_name', headerName: 'Table', minWidth: 160 },
-    { field: 'record_id', headerName: 'Record ID', minWidth: 100 },
-    { field: 'field_name', headerName: 'Field', minWidth: 160 },
-    { field: 'old_value', headerName: 'Old Value', minWidth: 200, valueFormatter: (p) => p.value ?? '—' },
-    { field: 'new_value', headerName: 'New Value', minWidth: 200, valueFormatter: (p) => p.value ?? '—' },
+    {
+      field: 'table_name',
+      headerName: 'Record',
+      minWidth: 170,
+      cellRenderer: (p) => (
+        <div style={{ lineHeight: 1.35, padding: '6px 0' }}>
+          <div style={{ fontWeight: 600 }}>{p.data.table_name}</div>
+          <div style={{ fontSize: '0.72rem', color: '#64748B' }}>#{p.data.record_id}</div>
+        </div>
+      ),
+    },
+    { field: 'field_name', headerName: 'Field', minWidth: 150 },
+    {
+      field: 'new_value',
+      headerName: 'Change',
+      minWidth: 220,
+      wrapText: true,
+      autoHeight: true,
+      cellRenderer: (p) => (
+        <div style={{ lineHeight: 1.35, padding: '6px 0' }}>
+          <div style={{ fontSize: '0.72rem', color: '#64748B' }}>was: {p.data.old_value ?? '—'}</div>
+          <div style={{ fontWeight: 600 }}>{p.data.new_value ?? '—'}</div>
+        </div>
+      ),
+    },
     { field: 'changed_by', headerName: 'Changed By', minWidth: 150, pinned: 'right' },
   ];
 
@@ -51,6 +71,7 @@ export default function AuditLogPage() {
         columnDefs={columnDefs}
         getRowId={(p) => String(p.data.id)}
         emptyMessage="No audit entries yet — they appear as soon as any tracked record is edited."
+        rowHeight={48}
         fillHeight
       />
     </ListPageLayout>

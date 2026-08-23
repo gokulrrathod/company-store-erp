@@ -132,15 +132,45 @@ export default function MaterialRequestsPage() {
 
   const columnDefs = [
     { field: 'requisition_number', headerName: 'Requisition No.', minWidth: 150 },
-    { field: 'department', headerName: 'Department', minWidth: 130 },
     { headerName: 'Item', minWidth: 180, valueGetter: (p) => `${p.data.item_code} — ${p.data.item_name}` },
-    { field: 'requested_by', headerName: 'Requested By', minWidth: 140 },
-    { field: 'quantity_requested', headerName: 'Qty Requested', type: 'numericColumn', minWidth: 130 },
-    { field: 'quantity_issued', headerName: 'Qty Issued', type: 'numericColumn', minWidth: 110, valueFormatter: (p) => p.value ?? '—' },
-    { field: 'balance_stock', headerName: 'Balance Stock', type: 'numericColumn', minWidth: 130, valueFormatter: (p) => p.value ?? '—' },
-    { field: 'purpose', headerName: 'Purpose', minWidth: 150, valueGetter: (p) => p.data.purpose || '—' },
-    { field: 'project_name', headerName: 'Project', minWidth: 150, valueGetter: (p) => p.data.project_name || '—' },
-    { field: 'required_date', headerName: 'Required Date', minWidth: 130, valueFormatter: (p) => (p.value ? new Date(p.value).toLocaleDateString() : '—') },
+    {
+      field: 'requested_by',
+      headerName: 'Requested By',
+      minWidth: 160,
+      cellRenderer: (p) => (
+        <div style={{ lineHeight: 1.35, padding: '6px 0' }}>
+          <div style={{ fontWeight: 600 }}>{p.data.requested_by}</div>
+          <div style={{ fontSize: '0.72rem', color: '#64748B' }}>{p.data.department}</div>
+        </div>
+      ),
+    },
+    {
+      field: 'quantity_requested',
+      headerName: 'Quantity',
+      minWidth: 170,
+      cellRenderer: (p) => (
+        <div style={{ lineHeight: 1.35, padding: '6px 0' }}>
+          <div style={{ fontWeight: 600 }}>Req {p.data.quantity_requested}</div>
+          <div style={{ fontSize: '0.72rem', color: '#64748B' }}>
+            Issued {p.data.quantity_issued ?? '—'} &middot; Bal {p.data.balance_stock ?? '—'}
+          </div>
+        </div>
+      ),
+    },
+    { field: 'purpose', headerName: 'Purpose', minWidth: 170, wrapText: true, autoHeight: true, valueGetter: (p) => p.data.purpose || '—' },
+    {
+      field: 'project_name',
+      headerName: 'Project / Due',
+      minWidth: 170,
+      cellRenderer: (p) => (
+        <div style={{ lineHeight: 1.35, padding: '6px 0' }}>
+          <div style={{ fontWeight: 600 }}>{p.data.project_name || '—'}</div>
+          <div style={{ fontSize: '0.72rem', color: '#64748B' }}>
+            {p.data.required_date ? new Date(p.data.required_date).toLocaleDateString() : 'No due date'}
+          </div>
+        </div>
+      ),
+    },
     {
       field: 'priority', headerName: 'Priority', minWidth: 100,
       cellRenderer: (p) => <Chip size="small" label={p.value} color={priorityColor[p.value]} />,
@@ -193,7 +223,7 @@ export default function MaterialRequestsPage() {
         </Stack>
       }
     >
-      <DataTable rowData={requests} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} fillHeight />
+      <DataTable rowData={requests} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} rowHeight={48} fillHeight />
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>New Material Request</DialogTitle>

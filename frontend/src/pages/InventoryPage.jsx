@@ -13,9 +13,17 @@ export default function InventoryPage() {
   }, []);
 
   const columnDefs = [
-    { field: 'code', headerName: 'Code', minWidth: 100 },
-    { field: 'name', headerName: 'Name', minWidth: 180 },
-    { field: 'category_name', headerName: 'Category', minWidth: 130 },
+    {
+      field: 'name',
+      headerName: 'Item Info',
+      minWidth: 200,
+      cellRenderer: (p) => (
+        <div style={{ lineHeight: 1.35, padding: '6px 0' }}>
+          <div style={{ fontWeight: 600 }}>{p.data.name}</div>
+          <div style={{ fontSize: '0.72rem', color: '#64748B' }}>{p.data.code} &middot; {p.data.category_name}</div>
+        </div>
+      ),
+    },
     { field: 'quantity', headerName: 'Quantity', type: 'numericColumn', minWidth: 110 },
     { field: 'available_stock', headerName: 'Available Stock', type: 'numericColumn', minWidth: 140 },
     { field: 'damaged_stock', headerName: 'Damaged', type: 'numericColumn', minWidth: 110, valueFormatter: (p) => Number(p.value) > 0 ? p.value : '—' },
@@ -55,6 +63,7 @@ export default function InventoryPage() {
           quickFilterText={search}
           getRowId={(p) => String(p.data.id)}
           emptyMessage="No items found. Start the backend and load seed data."
+          rowHeight={48}
           fillHeight
         />
       </Box>

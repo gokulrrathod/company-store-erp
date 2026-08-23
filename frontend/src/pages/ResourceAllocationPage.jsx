@@ -154,8 +154,17 @@ export default function ResourceAllocationPage() {
   ];
 
   const machineAllocColumnDefs = [
-    { field: 'machine_name', headerName: 'Machine', minWidth: 150 },
-    { field: 'machine_number', headerName: 'Machine No.', minWidth: 120 },
+    {
+      field: 'machine_name',
+      headerName: 'Machine',
+      minWidth: 170,
+      cellRenderer: (p) => (
+        <div style={{ lineHeight: 1.35, padding: '6px 0' }}>
+          <div style={{ fontWeight: 600 }}>{p.data.machine_name}</div>
+          <div style={{ fontSize: '0.72rem', color: '#64748B' }}>{p.data.machine_number}</div>
+        </div>
+      ),
+    },
     { field: 'project_reference', headerName: 'Project', minWidth: 160 },
     { field: 'allocated_from', headerName: 'From', minWidth: 110, valueFormatter: (p) => new Date(p.value).toLocaleDateString() },
     { field: 'allocated_to', headerName: 'To', minWidth: 110, valueFormatter: (p) => (p.value ? new Date(p.value).toLocaleDateString() : '—') },
@@ -206,7 +215,7 @@ export default function ResourceAllocationPage() {
       </Section>
 
       <Section title="Machine Allocations">
-        <DataTable rowData={allocations.machine_allocations} columnDefs={machineAllocColumnDefs} pagination={false} height={Math.max(160, allocations.machine_allocations.length * 56 + 60)} getRowId={(p) => String(p.data.id)} emptyMessage="No machine allocations yet." />
+        <DataTable rowData={allocations.machine_allocations} columnDefs={machineAllocColumnDefs} pagination={false} rowHeight={44} height={Math.max(160, allocations.machine_allocations.length * 56 + 60)} getRowId={(p) => String(p.data.id)} emptyMessage="No machine allocations yet." />
         {canManage && <Button startIcon={<AddIcon />} sx={{ mt: 1.5 }} onClick={() => setMachineAllocOpen(true)}>Allocate Machine</Button>}
       </Section>
 

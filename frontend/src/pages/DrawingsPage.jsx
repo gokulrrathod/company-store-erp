@@ -26,10 +26,18 @@ export default function DrawingsPage() {
   const canCreate = ['DESIGN_ENGINEER', 'ADMIN'].includes(user?.role);
 
   const columnDefs = [
-    { field: 'drawing_number', headerName: 'Drawing No.', minWidth: 140 },
-    { field: 'drawing_title', headerName: 'Title', minWidth: 200 },
+    {
+      field: 'drawing_title',
+      headerName: 'Drawing',
+      minWidth: 200,
+      cellRenderer: (p) => (
+        <div style={{ lineHeight: 1.35, padding: '6px 0' }}>
+          <div style={{ fontWeight: 600 }}>{p.data.drawing_title}</div>
+          <div style={{ fontSize: '0.72rem', color: '#64748B' }}>{p.data.drawing_number} &middot; Rev {p.data.revision}</div>
+        </div>
+      ),
+    },
     { field: 'equipment_name', headerName: 'Equipment', minWidth: 160 },
-    { field: 'revision', headerName: 'Rev', minWidth: 70 },
     { field: 'prepared_by', headerName: 'Prepared By', minWidth: 150 },
     {
       field: 'status',
@@ -41,7 +49,7 @@ export default function DrawingsPage() {
     {
       headerName: 'View',
       minWidth: 70,
-      flex: 0,
+      maxWidth: 90,
       sortable: false,
       filter: false,
       cellRenderer: (p) => (
@@ -65,7 +73,7 @@ export default function DrawingsPage() {
         </Stack>
       }
     >
-      <DataTable rowData={drawings} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} fillHeight />
+      <DataTable rowData={drawings} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} rowHeight={48} fillHeight />
     </ListPageLayout>
   );
 }

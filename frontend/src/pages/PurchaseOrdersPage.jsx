@@ -95,20 +95,36 @@ export default function PurchaseOrdersPage() {
 
   const columnDefs = [
     { field: 'po_number', headerName: 'PO Number', minWidth: 150 },
-    { field: 'supplier_name', headerName: 'Supplier', minWidth: 180 },
-    { field: 'department', headerName: 'Department', minWidth: 130, valueFormatter: (p) => p.value || '—' },
-    { field: 'project_name', headerName: 'Project', minWidth: 150, valueFormatter: (p) => p.value || '—' },
+    {
+      field: 'supplier_name',
+      headerName: 'Order Info',
+      minWidth: 200,
+      cellRenderer: (p) => (
+        <div style={{ lineHeight: 1.35, padding: '6px 0' }}>
+          <div style={{ fontWeight: 600 }}>{p.data.supplier_name}</div>
+          <div style={{ fontSize: '0.72rem', color: '#64748B' }}>
+            {p.data.department || '—'} &middot; {p.data.project_name || '—'}
+          </div>
+        </div>
+      ),
+    },
     { field: 'total_value', headerName: 'Value', type: 'numericColumn', minWidth: 120, valueFormatter: (p) => `₹ ${Number(p.value).toLocaleString('en-IN')}` },
     { field: 'created_by', headerName: 'Created By', minWidth: 150 },
     {
-      field: 'expected_delivery_date', headerName: 'Expected Delivery', minWidth: 150,
-      cellRenderer: (p) => p.value ? (
-        <span style={{ color: isPastDue(p.data) ? '#c62828' : 'inherit' }}>
-          {new Date(p.value).toLocaleDateString()}{isPastDue(p.data) ? ' (delayed)' : ''}
-        </span>
-      ) : '—',
+      field: 'expected_delivery_date',
+      headerName: 'Delivery',
+      minWidth: 170,
+      cellRenderer: (p) => (
+        <div style={{ lineHeight: 1.35, padding: '6px 0' }}>
+          <div style={{ fontWeight: 600, color: isPastDue(p.data) ? '#c62828' : 'inherit' }}>
+            {p.value ? new Date(p.value).toLocaleDateString() : '—'}{isPastDue(p.data) ? ' (delayed)' : ''}
+          </div>
+          <div style={{ fontSize: '0.72rem', color: '#64748B' }}>
+            {p.data.actual_delivery_date ? `Received ${new Date(p.data.actual_delivery_date).toLocaleDateString()}` : 'Not received yet'}
+          </div>
+        </div>
+      ),
     },
-    { field: 'actual_delivery_date', headerName: 'Actual Delivery', minWidth: 130, valueFormatter: (p) => (p.value ? new Date(p.value).toLocaleDateString() : '—') },
     {
       field: 'status',
       headerName: 'Status',
@@ -126,7 +142,7 @@ export default function PurchaseOrdersPage() {
       ? [{
           headerName: '',
           minWidth: 60,
-          width: 60,
+          maxWidth: 70,
           pinned: 'right',
           sortable: false,
           filter: false,
@@ -165,7 +181,7 @@ export default function PurchaseOrdersPage() {
         </Stack>
       }
     >
-      <DataTable rowData={orders} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} fillHeight />
+      <DataTable rowData={orders} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} rowHeight={48} fillHeight />
 
       <Dialog open={!!amendTarget} onClose={() => setAmendTarget(null)} fullWidth maxWidth="sm">
         <DialogTitle>Amend {amendTarget?.po_number}</DialogTitle>

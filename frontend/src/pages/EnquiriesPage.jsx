@@ -62,9 +62,18 @@ export default function EnquiriesPage() {
 
   const columnDefs = [
     { field: 'enquiry_number', headerName: 'Enquiry No.', minWidth: 140 },
-    { field: 'customer_name', headerName: 'Customer', minWidth: 180 },
-    { field: 'mobile_number', headerName: 'Mobile', minWidth: 130 },
-    { field: 'product_requirement', headerName: 'Requirement', minWidth: 200 },
+    {
+      field: 'customer_name',
+      headerName: 'Customer',
+      minWidth: 180,
+      cellRenderer: (p) => (
+        <div style={{ lineHeight: 1.35, padding: '6px 0' }}>
+          <div style={{ fontWeight: 600 }}>{p.data.customer_name}</div>
+          <div style={{ fontSize: '0.72rem', color: '#64748B' }}>{p.data.mobile_number}</div>
+        </div>
+      ),
+    },
+    { field: 'product_requirement', headerName: 'Requirement', minWidth: 200, wrapText: true, autoHeight: true },
     { field: 'sales_representative', headerName: 'Sales Rep', minWidth: 140 },
     { field: 'quotation_amount', headerName: 'Quotation', type: 'numericColumn', minWidth: 120, valueFormatter: (p) => p.value ? `₹ ${Number(p.value).toLocaleString('en-IN')}` : '—' },
     {
@@ -77,7 +86,7 @@ export default function EnquiriesPage() {
     {
       headerName: 'View',
       minWidth: 70,
-      flex: 0,
+      maxWidth: 90,
       pinned: 'right',
       sortable: false,
       filter: false,
@@ -102,7 +111,7 @@ export default function EnquiriesPage() {
         </Stack>
       }
     >
-      <DataTable rowData={enquiries} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} fillHeight />
+      <DataTable rowData={enquiries} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} rowHeight={48} fillHeight />
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>New Customer Enquiry</DialogTitle>

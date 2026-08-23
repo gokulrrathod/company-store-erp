@@ -64,7 +64,7 @@ export default function StockMovementsPage() {
     },
     { field: 'quantity', headerName: 'Quantity', type: 'numericColumn', minWidth: 100 },
     { field: 'reference', headerName: 'Reference', minWidth: 150 },
-    { field: 'remarks', headerName: 'Remarks', minWidth: 200 },
+    { field: 'remarks', headerName: 'Remarks', minWidth: 200, wrapText: true, autoHeight: true },
   ];
 
   return (
@@ -78,7 +78,7 @@ export default function StockMovementsPage() {
         </Stack>
       }
     >
-      <DataTable rowData={movements} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} fillHeight />
+      <DataTable rowData={movements} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} rowHeight={44} fillHeight />
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>New Stock Movement</DialogTitle>
