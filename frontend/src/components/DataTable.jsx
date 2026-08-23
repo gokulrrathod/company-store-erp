@@ -15,7 +15,11 @@ const DEFAULT_COL_DEF = {
   minWidth: 110,
 };
 
-const AUTO_SIZE_STRATEGY = { type: 'fitCellContents' };
+// fitGridWidth stretches columns to fill any leftover width when everything fits,
+// and falls back to each column's minWidth (with normal horizontal scroll) once
+// the columns no longer fit — so pinned columns only behave "rigidly" while
+// the grid is actually scrolling, not all the time.
+const AUTO_SIZE_STRATEGY = { type: 'fitGridWidth' };
 
 const ROW_HEIGHT = 34;
 const HEADER_HEIGHT = 36;
