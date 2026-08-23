@@ -71,12 +71,14 @@ export default function EnquiriesPage() {
       field: 'status',
       headerName: 'Status',
       minWidth: 160,
+      pinned: 'right',
       cellRenderer: (p) => <Chip size="small" label={p.value.replace(/_/g, ' ')} color={statusColor[p.value]} />,
     },
     {
       headerName: 'View',
       minWidth: 70,
       flex: 0,
+      pinned: 'right',
       sortable: false,
       filter: false,
       cellRenderer: (p) => (

@@ -28,7 +28,7 @@ export default function AuditLogPage() {
     { field: 'field_name', headerName: 'Field', minWidth: 160 },
     { field: 'old_value', headerName: 'Old Value', minWidth: 200, valueFormatter: (p) => p.value ?? '—' },
     { field: 'new_value', headerName: 'New Value', minWidth: 200, valueFormatter: (p) => p.value ?? '—' },
-    { field: 'changed_by', headerName: 'Changed By', minWidth: 150 },
+    { field: 'changed_by', headerName: 'Changed By', minWidth: 150, pinned: 'right' },
   ];
 
   return (

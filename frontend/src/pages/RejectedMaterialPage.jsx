@@ -29,9 +29,10 @@ export default function RejectedMaterialPage() {
       field: 'action_taken',
       headerName: 'Action Taken',
       minWidth: 160,
+      pinned: 'right',
       cellRenderer: (p) => <Chip size="small" label={p.value.replace(/_/g, ' ')} color="warning" />,
     },
-    { field: 'disposal_date', headerName: 'Disposal Date', minWidth: 130, valueFormatter: (p) => p.value ? new Date(p.value).toLocaleDateString() : '—' },
+    { field: 'disposal_date', headerName: 'Disposal Date', minWidth: 130, pinned: 'right', valueFormatter: (p) => p.value ? new Date(p.value).toLocaleDateString() : '—' },
   ];
 
   return (

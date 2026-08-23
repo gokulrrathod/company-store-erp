@@ -72,6 +72,7 @@ export default function HousekeepingPage() {
       field: 'status',
       headerName: 'Status',
       minWidth: 120,
+      pinned: 'right',
       cellRenderer: (p) => <Chip size="small" label={p.value} color={p.value === 'VERIFIED' ? 'success' : 'warning'} />,
     },
   ];

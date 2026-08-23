@@ -89,12 +89,14 @@ export default function SafetyPage() {
       field: 'status',
       headerName: 'Status',
       minWidth: 110,
+      pinned: 'right',
       cellRenderer: (p) => <Chip size="small" label={p.value} color={p.value === 'CLOSED' ? 'success' : 'warning'} />,
     },
     ...(canClose
       ? [{
           headerName: 'Actions',
           minWidth: 100,
+          pinned: 'right',
           sortable: false,
           filter: false,
           cellRenderer: (p) => (p.data.status === 'OPEN' ? <Button size="small" onClick={() => close(p.data.id)}>Close</Button> : null),

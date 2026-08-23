@@ -40,6 +40,7 @@ export default function StoragePage() {
           headerName: 'Edit',
           minWidth: 70,
           flex: 0,
+          pinned: 'right',
           sortable: false,
           filter: false,
           cellRenderer: (p) => (

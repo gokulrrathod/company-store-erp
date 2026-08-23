@@ -149,11 +149,13 @@ export default function MaterialRequestsPage() {
       field: 'status',
       headerName: 'Status',
       minWidth: 120,
+      pinned: 'right',
       cellRenderer: (p) => <Chip size="small" label={p.value} color={statusColor[p.value]} />,
     },
     {
       headerName: 'Actions',
       minWidth: 160,
+      pinned: 'right',
       sortable: false,
       filter: false,
       cellRenderer: (p) => {

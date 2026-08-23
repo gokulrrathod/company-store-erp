@@ -7,7 +7,6 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DataTable from '../components/DataTable.jsx';
-import ListPageLayout from '../components/ListPageLayout.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import RHFSelect from '../components/form/RHFSelect.jsx';
 import {
@@ -192,35 +191,34 @@ export default function ResourceAllocationPage() {
   ];
 
   return (
-    <ListPageLayout header={<Typography variant="h5">Resource Allocation</Typography>}>
-      <Box sx={{ maxWidth: 1100 }}>
-        {actionError && <Alert severity="error" sx={{ mt: 2 }}>{actionError}</Alert>}
+    <Box sx={{ maxWidth: 1100 }}>
+      <Typography variant="h5" fontWeight={700}>Resource Allocation</Typography>
+      {actionError && <Alert severity="error" sx={{ mt: 2 }}>{actionError}</Alert>}
 
-        <Section title="Machinery Master">
-          <DataTable rowData={machines} columnDefs={machineColumnDefs} pagination={false} height={Math.max(160, machines.length * 56 + 60)} getRowId={(p) => String(p.data.id)} emptyMessage="No machines registered yet." />
-          {canManage && <Button startIcon={<AddIcon />} sx={{ mt: 1.5 }} onClick={() => setMachineOpen(true)}>Add Machine</Button>}
-        </Section>
+      <Section title="Machinery Master">
+        <DataTable rowData={machines} columnDefs={machineColumnDefs} pagination={false} height={Math.max(160, machines.length * 56 + 60)} getRowId={(p) => String(p.data.id)} emptyMessage="No machines registered yet." />
+        {canManage && <Button startIcon={<AddIcon />} sx={{ mt: 1.5 }} onClick={() => setMachineOpen(true)}>Add Machine</Button>}
+      </Section>
 
-        <Section title="Labour Master">
-          <DataTable rowData={labour} columnDefs={labourColumnDefs} pagination={false} height={Math.max(160, labour.length * 56 + 60)} getRowId={(p) => String(p.data.id)} emptyMessage="No employees registered yet." />
-          {canManage && <Button startIcon={<AddIcon />} sx={{ mt: 1.5 }} onClick={() => setLabourOpen(true)}>Add Employee</Button>}
-        </Section>
+      <Section title="Labour Master">
+        <DataTable rowData={labour} columnDefs={labourColumnDefs} pagination={false} height={Math.max(160, labour.length * 56 + 60)} getRowId={(p) => String(p.data.id)} emptyMessage="No employees registered yet." />
+        {canManage && <Button startIcon={<AddIcon />} sx={{ mt: 1.5 }} onClick={() => setLabourOpen(true)}>Add Employee</Button>}
+      </Section>
 
-        <Section title="Machine Allocations">
-          <DataTable rowData={allocations.machine_allocations} columnDefs={machineAllocColumnDefs} pagination={false} height={Math.max(160, allocations.machine_allocations.length * 56 + 60)} getRowId={(p) => String(p.data.id)} emptyMessage="No machine allocations yet." />
-          {canManage && <Button startIcon={<AddIcon />} sx={{ mt: 1.5 }} onClick={() => setMachineAllocOpen(true)}>Allocate Machine</Button>}
-        </Section>
+      <Section title="Machine Allocations">
+        <DataTable rowData={allocations.machine_allocations} columnDefs={machineAllocColumnDefs} pagination={false} height={Math.max(160, allocations.machine_allocations.length * 56 + 60)} getRowId={(p) => String(p.data.id)} emptyMessage="No machine allocations yet." />
+        {canManage && <Button startIcon={<AddIcon />} sx={{ mt: 1.5 }} onClick={() => setMachineAllocOpen(true)}>Allocate Machine</Button>}
+      </Section>
 
-        <Section title="Manpower Allocations">
-          <DataTable rowData={allocations.manpower_allocations} columnDefs={manpowerAllocColumnDefs} pagination={false} height={Math.max(160, allocations.manpower_allocations.length * 56 + 60)} getRowId={(p) => String(p.data.id)} emptyMessage="No manpower allocations yet." />
-          {canManage && <Button startIcon={<AddIcon />} sx={{ mt: 1.5 }} onClick={() => setManpowerAllocOpen(true)}>Allocate Employee</Button>}
-        </Section>
+      <Section title="Manpower Allocations">
+        <DataTable rowData={allocations.manpower_allocations} columnDefs={manpowerAllocColumnDefs} pagination={false} height={Math.max(160, allocations.manpower_allocations.length * 56 + 60)} getRowId={(p) => String(p.data.id)} emptyMessage="No manpower allocations yet." />
+        {canManage && <Button startIcon={<AddIcon />} sx={{ mt: 1.5 }} onClick={() => setManpowerAllocOpen(true)}>Allocate Employee</Button>}
+      </Section>
 
-        <Section title="Space Allocations">
-          <DataTable rowData={allocations.space_allocations} columnDefs={spaceAllocColumnDefs} pagination={false} height={Math.max(160, allocations.space_allocations.length * 56 + 60)} getRowId={(p) => String(p.data.id)} emptyMessage="No space allocations yet." />
-          {canManage && <Button startIcon={<AddIcon />} sx={{ mt: 1.5 }} onClick={() => setSpaceAllocOpen(true)}>Allocate Space</Button>}
-        </Section>
-      </Box>
+      <Section title="Space Allocations">
+        <DataTable rowData={allocations.space_allocations} columnDefs={spaceAllocColumnDefs} pagination={false} height={Math.max(160, allocations.space_allocations.length * 56 + 60)} getRowId={(p) => String(p.data.id)} emptyMessage="No space allocations yet." />
+        {canManage && <Button startIcon={<AddIcon />} sx={{ mt: 1.5 }} onClick={() => setSpaceAllocOpen(true)}>Allocate Space</Button>}
+      </Section>
 
       <Dialog open={machineOpen} onClose={() => setMachineOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>Add Machine</DialogTitle>
@@ -301,6 +299,6 @@ export default function ResourceAllocationPage() {
           <Button variant="contained" onClick={spaceAllocForm.handleSubmit(addSpaceAllocation)}>Allocate</Button>
         </DialogActions>
       </Dialog>
-    </ListPageLayout>
+    </Box>
   );
 }
