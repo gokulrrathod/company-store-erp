@@ -26,7 +26,7 @@ export default function DataTable({
   columnDefs,
   pagination = true,
   pageSize = 50,
-  minHeight = 320,
+  minHeight = 140,
   maxHeight = 640,
   fillHeight = false,
   emptyMessage = 'No records found.',
