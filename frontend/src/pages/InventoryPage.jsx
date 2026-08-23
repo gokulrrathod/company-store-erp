@@ -17,14 +17,24 @@ export default function InventoryPage() {
     { field: 'name', headerName: 'Name', minWidth: 180 },
     { field: 'category_name', headerName: 'Category', minWidth: 130 },
     { field: 'quantity', headerName: 'Quantity', type: 'numericColumn', minWidth: 110 },
-    { field: 'available_stock', headerName: 'Available Stock', type: 'numericColumn', minWidth: 140 },
-    { field: 'damaged_stock', headerName: 'Damaged', type: 'numericColumn', minWidth: 110, valueFormatter: (p) => Number(p.value) > 0 ? p.value : '—' },
-    { field: 'rejected_stock', headerName: 'Rejected', type: 'numericColumn', minWidth: 110, valueFormatter: (p) => Number(p.value) > 0 ? p.value : '—' },
+    {
+      headerName: 'Stock Breakdown',
+      minWidth: 190,
+      valueGetter: (p) => {
+        const parts = [`${p.data.available_stock} avail`];
+        if (Number(p.data.damaged_stock) > 0) parts.push(`${p.data.damaged_stock} dmg`);
+        if (Number(p.data.rejected_stock) > 0) parts.push(`${p.data.rejected_stock} rej`);
+        return parts.join(' · ');
+      },
+    },
     { field: 'unit', headerName: 'Unit', minWidth: 80 },
     { field: 'reorder_level', headerName: 'Reorder Level', type: 'numericColumn', minWidth: 130 },
     { field: 'storage_location', headerName: 'Storage Location', minWidth: 180, valueFormatter: (p) => p.value || '—' },
-    { field: 'unit_rate', headerName: 'Unit Rate', type: 'numericColumn', minWidth: 110, valueFormatter: (p) => `₹ ${Number(p.value).toLocaleString('en-IN')}` },
-    { field: 'valuation', headerName: 'Valuation', type: 'numericColumn', minWidth: 130, valueFormatter: (p) => `₹ ${Number(p.value).toLocaleString('en-IN')}` },
+    {
+      headerName: 'Value',
+      minWidth: 200,
+      valueGetter: (p) => `₹ ${Number(p.data.valuation).toLocaleString('en-IN')} (₹ ${Number(p.data.unit_rate).toLocaleString('en-IN')}/unit)`,
+    },
     {
       headerName: 'Status',
       minWidth: 120,
