@@ -110,4 +110,90 @@ router.get('/summary', asyncHandler(async (req, res) => {
   });
 }));
 
+router.get('/purchase-summary', asyncHandler(async (req, res) => {
+  const [
+    openPoCount, pendingBudgetApprovals, overdueDeliveries, openPoValue,
+    poStatusBreakdown, budgetUtilization, topSuppliers, pendingVendorApprovals, recentPos,
+  ] = await Promise.all([
+    pool.query(`SELECT COUNT(*) AS total FROM purchase_orders WHERE status != 'CLOSED'`),
+    pool.query(`SELECT COUNT(*) AS total FROM purchase_orders WHERE budget_status = 'PENDING_FINANCE_APPROVAL'`),
+    pool.query(
+      `SELECT COUNT(*) AS total FROM purchase_orders
+       WHERE status != 'CLOSED' AND actual_delivery_date IS NULL
+         AND expected_delivery_date IS NOT NULL AND expected_delivery_date < CURRENT_DATE`
+    ),
+    pool.query(`SELECT COALESCE(SUM(total_value), 0) AS total FROM purchase_orders WHERE status != 'CLOSED'`),
+    pool.query(`SELECT status, COUNT(*) AS total FROM purchase_orders GROUP BY status`),
+    pool.query(
+      `SELECT department, COALESCE(SUM(allocated_amount), 0) AS allocated, COALESCE(SUM(utilized_amount), 0) AS utilized
+       FROM budgets GROUP BY department ORDER BY department`
+    ),
+    pool.query(
+      `SELECT s.name AS supplier_name, COUNT(po.id) AS po_count, COALESCE(SUM(po.total_value), 0) AS total_value
+       FROM purchase_orders po JOIN suppliers s ON s.id = po.supplier_id
+       GROUP BY s.name ORDER BY total_value DESC LIMIT 5`
+    ),
+    pool.query(
+      `SELECT COUNT(*) AS total FROM suppliers
+       WHERE vendor_status IN ('PENDING_VERIFICATION', 'PENDING_FINANCE_VERIFICATION', 'PENDING_MANAGEMENT_APPROVAL')`
+    ),
+    pool.query(
+      `SELECT po.po_number, po.status, po.total_value, po.created_at, s.name AS supplier_name
+       FROM purchase_orders po JOIN suppliers s ON s.id = po.supplier_id
+       ORDER BY po.created_at DESC LIMIT 5`
+    ),
+  ]);
+
+  res.json({
+    open_po_count: Number(openPoCount.rows[0].total),
+    pending_budget_approvals_count: Number(pendingBudgetApprovals.rows[0].total),
+    overdue_deliveries_count: Number(overdueDeliveries.rows[0].total),
+    open_po_value: Number(openPoValue.rows[0].total),
+    po_status_breakdown: poStatusBreakdown.rows.map((r) => ({ status: r.status, count: Number(r.total) })),
+    budget_utilization: budgetUtilization.rows.map((r) => ({ department: r.department, allocated: Number(r.allocated), utilized: Number(r.utilized) })),
+    top_suppliers: topSuppliers.rows.map((r) => ({ supplier_name: r.supplier_name, po_count: Number(r.po_count), total_value: Number(r.total_value) })),
+    pending_vendor_approvals_count: Number(pendingVendorApprovals.rows[0].total),
+    recent_purchase_orders: recentPos.rows,
+  });
+}));
+
+router.get('/sales-summary', asyncHandler(async (req, res) => {
+  const [
+    openEnquiriesCount, pendingQuotationCount, confirmedThisMonth, openSoValue,
+    enquiryPipeline, soStatusBreakdown, topCustomers, awaitingDispatch, recentEnquiries,
+  ] = await Promise.all([
+    pool.query(`SELECT COUNT(*) AS total FROM enquiries WHERE status != 'ORDER_CONFIRMED'`),
+    pool.query(`SELECT COUNT(*) AS total FROM enquiries WHERE status = 'NEW_ENQUIRY'`),
+    pool.query(
+      `SELECT COUNT(*) AS total FROM sales_orders
+       WHERE date_trunc('month', created_at) = date_trunc('month', CURRENT_DATE)`
+    ),
+    pool.query(`SELECT COALESCE(SUM(balance_amount), 0) AS total FROM sales_orders WHERE status != 'DELIVERED'`),
+    pool.query(`SELECT status, COUNT(*) AS total FROM enquiries GROUP BY status`),
+    pool.query(`SELECT status, COUNT(*) AS total FROM sales_orders GROUP BY status`),
+    pool.query(
+      `SELECT e.customer_name, COUNT(so.id) AS order_count, COALESCE(SUM(so.approved_price), 0) AS total_value
+       FROM sales_orders so JOIN enquiries e ON e.id = so.enquiry_id
+       GROUP BY e.customer_name ORDER BY total_value DESC LIMIT 5`
+    ),
+    pool.query(`SELECT COUNT(*) AS total FROM sales_orders WHERE status = 'READY_FOR_DISPATCH'`),
+    pool.query(
+      `SELECT enquiry_number, customer_name, status, created_at
+       FROM enquiries ORDER BY created_at DESC LIMIT 5`
+    ),
+  ]);
+
+  res.json({
+    open_enquiries_count: Number(openEnquiriesCount.rows[0].total),
+    pending_quotation_count: Number(pendingQuotationCount.rows[0].total),
+    confirmed_orders_this_month: Number(confirmedThisMonth.rows[0].total),
+    open_so_value: Number(openSoValue.rows[0].total),
+    enquiry_pipeline: enquiryPipeline.rows.map((r) => ({ status: r.status, count: Number(r.total) })),
+    so_status_breakdown: soStatusBreakdown.rows.map((r) => ({ status: r.status, count: Number(r.total) })),
+    top_customers: topCustomers.rows.map((r) => ({ customer_name: r.customer_name, order_count: Number(r.order_count), total_value: Number(r.total_value) })),
+    awaiting_dispatch_count: Number(awaitingDispatch.rows[0].total),
+    recent_enquiries: recentEnquiries.rows,
+  });
+}));
+
 export default router;
