@@ -55,7 +55,7 @@ function OrderCard({ order, actionsMenu }) {
           <ReceiptLongIcon fontSize="small" />
         </Avatar>
         <Typography variant="subtitle1" fontWeight={700}>{order.po_number}</Typography>
-        <Chip size="small" label={order.status} color={statusColor[order.status]} />
+        <Chip size="small" label={order.status.replace(/_/g, ' ')} color={statusColor[order.status]} />
         <Chip size="small" label={order.budget_status.replace(/_/g, ' ')} color={budgetStatusColor[order.budget_status]} />
         <Box sx={{ flexGrow: 1 }} />
         <Typography variant="subtitle2" fontWeight={700}>₹ {Number(order.total_value).toLocaleString('en-IN')}</Typography>
