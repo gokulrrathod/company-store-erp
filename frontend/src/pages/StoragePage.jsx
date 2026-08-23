@@ -21,10 +21,17 @@ export default function StoragePage() {
   const canManage = ['STORE_MANAGER', 'STORE_EXECUTIVE', 'ADMIN'].includes(user?.role);
 
   const columnDefs = [
-    { field: 'code', headerName: 'Material Code', minWidth: 120 },
-    { field: 'name', headerName: 'Material Name', minWidth: 180 },
-    { field: 'category_name', headerName: 'Category', minWidth: 130 },
-    { field: 'warehouse', headerName: 'Warehouse', minWidth: 150 },
+    {
+      field: 'name',
+      headerName: 'Material Info',
+      minWidth: 220,
+      cellRenderer: (p) => (
+        <div style={{ lineHeight: 1.35, padding: '6px 0' }}>
+          <div style={{ fontWeight: 600 }}>{p.data.name}</div>
+          <div style={{ fontSize: '0.72rem', color: '#64748B' }}>{p.data.code} &middot; {p.data.category_name}</div>
+        </div>
+      ),
+    },
     {
       headerName: 'Storage Location',
       valueGetter: (p) => [p.data.warehouse, p.data.rack_number, p.data.bin_number].filter(Boolean).join(' / '),
@@ -65,7 +72,7 @@ export default function StoragePage() {
         </Stack>
       }
     >
-      <DataTable rowData={items} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} fillHeight />
+      <DataTable rowData={items} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} rowHeight={48} fillHeight />
     </ListPageLayout>
   );
 }

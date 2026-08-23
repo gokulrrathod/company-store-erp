@@ -29,6 +29,7 @@ export default function DataTable({
   minHeight = 140,
   maxHeight = 640,
   fillHeight = false,
+  rowHeight = ROW_HEIGHT,
   emptyMessage = 'No records found.',
   onRowClicked,
   getRowId,
@@ -76,7 +77,7 @@ export default function DataTable({
   }
 
   const visibleRows = pagination ? Math.min(displayedRowCount, pageSize) : displayedRowCount;
-  const contentHeight = HEADER_HEIGHT + visibleRows * ROW_HEIGHT + (pagination ? PAGER_HEIGHT : 0) + 4;
+  const contentHeight = HEADER_HEIGHT + visibleRows * rowHeight + (pagination ? PAGER_HEIGHT : 0) + 4;
   const height = Math.min(maxHeight, Math.max(minHeight, contentHeight));
 
   const grid = (
@@ -96,7 +97,7 @@ export default function DataTable({
         '--ag-font-size': '0.8125rem',
         '--ag-border-color': '#E2E8F0',
         '--ag-border-radius': '10px',
-        '--ag-row-height': `${ROW_HEIGHT}px`,
+        '--ag-row-height': `${rowHeight}px`,
         '--ag-header-height': `${HEADER_HEIGHT}px`,
         '& .ag-header-cell-text': { fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', fontSize: '0.7rem' },
         '& .ag-icon': { color: '#FFFFFF' },
