@@ -5,6 +5,14 @@ const nonNegativeNumber = z.coerce.number().min(0, 'Cannot be negative');
 const requiredString = (label, max = 200) =>
   z.string().trim().min(1, `${label} is required`).max(max, `${label} is too long`);
 const optionalString = (max = 500) => z.string().trim().max(max).optional().or(z.literal('')).nullable();
+// For optional foreign-key fields: an unselected <select> sends '' rather than
+// omitting the key, which z.coerce.number() turns into 0 — failing .positive()
+// even though the field is optional. Normalize '' (and undefined) to null first
+// so "left blank" actually passes, while a real value still gets validated.
+const optionalPositiveId = z.preprocess(
+  (v) => (v === '' || v === undefined ? null : v),
+  z.coerce.number().int().positive().nullable().optional()
+);
 
 export const loginSchema = z.object({
   email: z.string().trim().email('Enter a valid email'),
@@ -14,7 +22,7 @@ export const loginSchema = z.object({
 export const itemCreateSchema = z.object({
   code: requiredString('Code', 50),
   name: requiredString('Name', 200),
-  category_id: z.coerce.number().int().positive().nullable().optional(),
+  category_id: optionalPositiveId,
   unit: requiredString('Unit', 20),
   quantity: nonNegativeNumber.optional(),
   reorder_level: nonNegativeNumber.optional(),
@@ -47,26 +55,26 @@ export const materialRequestSchema = z.object({
   quantity_requested: positiveNumber,
   purpose: optionalString(200),
   remarks: optionalString(500),
-  project_id: z.coerce.number().int().positive().nullable().optional(),
+  project_id: optionalPositiveId,
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).optional(),
   required_date: optionalString(20),
 });
 
 export const materialRequestStatusSchema = z.object({
   status: z.enum(['APPROVED', 'REJECTED'], { errorMap: () => ({ message: 'Status must be APPROVED or REJECTED' }) }),
-  override_batch_id: z.coerce.number().int().positive().nullable().optional(),
+  override_batch_id: optionalPositiveId,
   override_reason: optionalString(300),
 });
 
 export const purchaseOrderSchema = z.object({
   supplier_id: z.coerce.number().int().positive('Select a supplier'),
   department: requiredString('Department', 100),
-  project_id: z.coerce.number().int().positive().nullable().optional(),
+  project_id: optionalPositiveId,
   expected_delivery_date: optionalString(20),
   lines: z.array(z.object({
     item_id: z.coerce.number().int().positive('Select an item'),
     quantity_ordered: positiveNumber,
-    mr_id: z.coerce.number().int().positive().nullable().optional(),
+    mr_id: optionalPositiveId,
   })).min(1, 'Add at least one line item'),
 });
 
@@ -85,7 +93,7 @@ const receiptLineSchema = z.object({
 });
 
 export const materialReceiptSchema = z.object({
-  po_id: z.coerce.number().int().positive().nullable().optional(),
+  po_id: optionalPositiveId,
   supplier_id: z.coerce.number().int().positive('Select a supplier'),
   invoice_number: optionalString(100),
   lines: z.array(receiptLineSchema).min(1, 'Add at least one received item'),
@@ -100,7 +108,7 @@ export const inspectLineSchema = z.object({
 });
 
 export const rejectedMaterialSchema = z.object({
-  supplier_id: z.coerce.number().int().positive().nullable().optional(),
+  supplier_id: optionalPositiveId,
   item_id: z.coerce.number().int().positive('Select an item'),
   batch_number: optionalString(100),
   quantity: positiveNumber,
@@ -202,7 +210,7 @@ export const vendorApprovalSchema = z.object({
 export const budgetSchema = z.object({
   department: requiredString('Department', 100),
   allocated_amount: nonNegativeNumber,
-  project_id: z.coerce.number().int().positive().nullable().optional(),
+  project_id: optionalPositiveId,
 });
 
 // ===== Design =====
@@ -239,7 +247,7 @@ export const designInputSheetSchema = z.object({
   material_specification: optionalString(500),
   corrosion_allowance: nonNegativeNumber.nullable().optional(),
   design_pressure: nonNegativeNumber.nullable().optional(),
-  previous_reference_drawing_id: z.coerce.number().int().positive().nullable().optional(),
+  previous_reference_drawing_id: optionalPositiveId,
   design_notes: optionalString(2000),
 });
 
@@ -441,7 +449,7 @@ export const boqLineSchema = z.object({
   description: requiredString('Description', 300),
   unit: requiredString('Unit', 20),
   quantity: positiveNumber,
-  rate_chart_id: z.coerce.number().int().positive().nullable().optional(),
+  rate_chart_id: optionalPositiveId,
   rate: positiveNumber,
 });
 
@@ -488,7 +496,7 @@ export const insuranceRecordSchema = z.object({
 // ===== Accounts =====
 
 const invoiceLineSchema = z.object({
-  item_id: z.coerce.number().int().positive().nullable().optional(),
+  item_id: optionalPositiveId,
   description: requiredString('Description', 300),
   hsn_sac_code: optionalString(20),
   quantity: positiveNumber,
