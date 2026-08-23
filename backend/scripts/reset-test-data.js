@@ -1,15 +1,18 @@
 // Resets the database to a clean baseline for a fresh walkthrough/test.
 //
-// Run from the "backend" directory (so it can use the already-installed
-// `pg` package) via Railway, which injects DATABASE_URL for you:
+// The internal DATABASE_URL (postgres.railway.internal) only resolves
+// from inside Railway's own network, so this has to run ON Railway, not
+// via `railway run` from a local machine. From this backend service's
+// shell (railway ssh --service backend), run:
 //
-//   railway run --service backend node scripts/reset-test-data.js
+//   node scripts/reset-test-data.js
 //
 // What it does:
 //   1. Wipes every table (all transactional data AND master data) in one
 //      transaction, restarting every id sequence from 1.
-//   2. Re-inserts the baseline master data from db/seed.sql (item catalog,
-//      demo users, suppliers, budgets, one sample PO, etc.)
+//   2. Re-inserts the baseline master data from scripts/seed.sql (a
+//      deployable copy of db/seed.sql — item catalog, demo users,
+//      suppliers, budgets, one sample PO, etc.)
 //   3. Re-creates the "OPENING" item_batches rows the FIFO/FEFO issuance
 //      logic depends on (normally created once by backend migration 003,
 //      which won't re-run since it's already marked applied).
@@ -27,7 +30,6 @@ import { dirname, join } from 'path';
 import pg from 'pg';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const dbDir = join(__dirname, '..', '..', 'db');
 
 const truncateSql = `
   TRUNCATE TABLE
@@ -55,7 +57,7 @@ const openingBatchesSql = `
 `;
 
 async function main() {
-  const seedSql = readFileSync(join(dbDir, 'seed.sql'), 'utf8');
+  const seedSql = readFileSync(join(__dirname, 'seed.sql'), 'utf8');
 
   const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
   await client.connect();
