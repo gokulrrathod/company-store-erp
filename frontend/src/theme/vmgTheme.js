@@ -44,6 +44,15 @@ export const vmgTheme = createTheme({
         '#root': { height: '100%' },
       },
     },
+    MuiDialogTitle: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#4F46E5',
+          color: '#FFFFFF',
+          fontWeight: 700,
+        },
+      },
+    },
     MuiAppBar: {
       styleOverrides: {
         root: {
