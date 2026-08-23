@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  Typography, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, Stack, Alert, IconButton,
+  Box, Typography, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, Stack, Alert, IconButton,
+  Paper, Avatar, TextField, MenuItem,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import ContactMailIcon from '@mui/icons-material/ContactMail';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useNavigate } from 'react-router-dom';
-import DataTable from '../components/DataTable.jsx';
 import ListPageLayout from '../components/ListPageLayout.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import { enquirySchema } from '../validation/schemas.js';
@@ -20,12 +23,65 @@ const statusColor = {
   UNDER_NEGOTIATION: 'warning', PRICE_APPROVED: 'success', ORDER_CONFIRMED: 'success',
 };
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+
+function EnquiryCard({ enquiry, onView }) {
+  return (
+    <Paper variant="outlined" sx={{ borderRadius: '10px', mb: 2, overflow: 'hidden' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 2, flexWrap: 'wrap' }}>
+        <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>
+          <ContactMailIcon fontSize="small" />
+        </Avatar>
+        <Typography variant="subtitle1" fontWeight={700}>{enquiry.enquiry_number}</Typography>
+        <Chip size="small" label={enquiry.status.replace(/_/g, ' ')} color={statusColor[enquiry.status]} />
+        <Box sx={{ flexGrow: 1 }} />
+        <IconButton size="small" onClick={() => onView(enquiry.id)} title="View enquiry">
+          <VisibilityIcon fontSize="small" />
+        </IconButton>
+      </Box>
+
+      <Box sx={{ px: 2, pb: 1.5, display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+        <Typography variant="body2" color="text.secondary">
+          Customer: <strong style={{ color: 'inherit' }}>{enquiry.customer_name}</strong>
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Mobile: <strong style={{ color: 'inherit' }}>{enquiry.mobile_number}</strong>
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Sales Rep: <strong style={{ color: 'inherit' }}>{enquiry.sales_representative}</strong>
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Date: <strong style={{ color: 'inherit' }}>{new Date(enquiry.enquiry_date).toLocaleDateString()}</strong>
+        </Typography>
+      </Box>
+
+      <Box sx={{ px: 2, py: 1.5, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'background.default' }}>
+        <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color: 'text.secondary' }}>
+          Requirement
+        </Typography>
+        <Typography variant="body2" sx={{ mt: 0.5 }}>{enquiry.product_requirement}</Typography>
+      </Box>
+
+      <Box sx={{ px: 2, py: 1, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between' }}>
+        <Typography variant="caption" color="text.secondary">
+          {enquiry.company_name ? `Company: ${enquiry.company_name}` : ' '}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {enquiry.quotation_amount ? `Quotation: ₹ ${Number(enquiry.quotation_amount).toLocaleString('en-IN')}` : 'No quotation yet'}
+        </Typography>
+      </Box>
+    </Paper>
+  );
+}
+
 export default function EnquiriesPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [enquiries, setEnquiries] = useState([]);
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState('');
+  const [pageSize, setPageSize] = useState(20);
+  const [page, setPage] = useState(0);
 
   const {
     control, handleSubmit, reset, setError,
@@ -60,43 +116,14 @@ export default function EnquiriesPage() {
 
   const canCreate = ['SALES', 'ADMIN'].includes(user?.role);
 
-  const columnDefs = [
-    { field: 'enquiry_number', headerName: 'Enquiry No.', minWidth: 140 },
-    {
-      field: 'customer_name',
-      headerName: 'Customer',
-      minWidth: 180,
-      cellRenderer: (p) => (
-        <div style={{ lineHeight: 1.35, padding: '6px 0' }}>
-          <div style={{ fontWeight: 600 }}>{p.data.customer_name}</div>
-          <div style={{ fontSize: '0.72rem', color: '#64748B' }}>{p.data.mobile_number}</div>
-        </div>
-      ),
-    },
-    { field: 'product_requirement', headerName: 'Requirement', minWidth: 200, wrapText: true, autoHeight: true },
-    { field: 'sales_representative', headerName: 'Sales Rep', minWidth: 140 },
-    { field: 'quotation_amount', headerName: 'Quotation', type: 'numericColumn', minWidth: 120, valueFormatter: (p) => p.value ? `₹ ${Number(p.value).toLocaleString('en-IN')}` : '—' },
-    {
-      field: 'status',
-      headerName: 'Status',
-      minWidth: 160,
-      pinned: 'right',
-      cellRenderer: (p) => <Chip size="small" label={p.value.replace(/_/g, ' ')} color={statusColor[p.value]} />,
-    },
-    {
-      headerName: 'View',
-      minWidth: 70,
-      maxWidth: 90,
-      pinned: 'right',
-      sortable: false,
-      filter: false,
-      cellRenderer: (p) => (
-        <IconButton size="small" onClick={() => navigate(`/enquiries/${p.data.id}`)}>
-          <VisibilityIcon fontSize="small" />
-        </IconButton>
-      ),
-    },
-  ];
+  const totalPages = Math.max(1, Math.ceil(enquiries.length / pageSize));
+  const clampedPage = Math.min(page, totalPages - 1);
+  const pageEnquiries = useMemo(
+    () => enquiries.slice(clampedPage * pageSize, clampedPage * pageSize + pageSize),
+    [enquiries, clampedPage, pageSize]
+  );
+  const rangeStart = enquiries.length === 0 ? 0 : clampedPage * pageSize + 1;
+  const rangeEnd = Math.min(enquiries.length, clampedPage * pageSize + pageSize);
 
   return (
     <ListPageLayout
@@ -111,7 +138,45 @@ export default function EnquiriesPage() {
         </Stack>
       }
     >
-      <DataTable rowData={enquiries} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} rowHeight={48} fillHeight />
+      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', pr: 0.5 }}>
+          {enquiries.length === 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>No enquiries recorded yet.</Typography>
+          )}
+          {pageEnquiries.map((e) => (
+            <EnquiryCard key={e.id} enquiry={e} onView={(id) => navigate(`/enquiries/${id}`)} />
+          ))}
+        </Box>
+
+        {enquiries.length > 0 && (
+          <Box sx={{
+            flexShrink: 0, display: 'flex', alignItems: 'center', gap: 2,
+            px: 1, py: 1, borderTop: '1px solid', borderColor: 'divider',
+          }}>
+            <Stack direction="row" alignItems="center" gap={1}>
+              <Typography variant="body2" color="text.secondary">Page Size:</Typography>
+              <TextField
+                select size="small" value={pageSize}
+                onChange={(ev) => { setPageSize(Number(ev.target.value)); setPage(0); }}
+                sx={{ width: 90 }}
+              >
+                {PAGE_SIZE_OPTIONS.map((n) => <MenuItem key={n} value={n}>{n}</MenuItem>)}
+              </TextField>
+            </Stack>
+            <Box sx={{ flexGrow: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              {rangeStart} to {rangeEnd} of {enquiries.length}
+            </Typography>
+            <IconButton size="small" disabled={clampedPage === 0} onClick={() => setPage(clampedPage - 1)}>
+              <ChevronLeftIcon fontSize="small" />
+            </IconButton>
+            <Typography variant="body2" color="text.secondary">Page {clampedPage + 1} of {totalPages}</Typography>
+            <IconButton size="small" disabled={clampedPage >= totalPages - 1} onClick={() => setPage(clampedPage + 1)}>
+              <ChevronRightIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        )}
+      </Box>
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>New Customer Enquiry</DialogTitle>
