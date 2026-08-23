@@ -480,7 +480,6 @@ export const insuranceRecordSchema = z.object({
   start_date: requiredString('Start date', 20),
   expiry_date: requiredString('Expiry date', 20),
   premium_amount: nonNegativeNumber,
-  document_name: optionalString(255),
 }).refine((data) => new Date(data.expiry_date) > new Date(data.start_date), {
   message: 'Expiry date must be after start date',
   path: ['expiry_date'],

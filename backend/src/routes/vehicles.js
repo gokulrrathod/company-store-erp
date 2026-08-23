@@ -88,15 +88,15 @@ router.patch('/:id/status', requireRole(ROLES.TRANSPORT, ROLES.ADMIN), validate(
 }));
 
 router.post('/:id/insurance', requireRole(ROLES.TRANSPORT, ROLES.ADMIN), validate(insuranceRecordSchema), asyncHandler(async (req, res) => {
-  const { insurance_company_name, policy_number, start_date, expiry_date, premium_amount, document_name } = req.body;
+  const { insurance_company_name, policy_number, start_date, expiry_date, premium_amount } = req.body;
   const { rows: vehicleRows } = await pool.query(`SELECT id FROM vehicles WHERE id = $1`, [req.params.id]);
   if (!vehicleRows.length) return res.status(404).json({ error: 'Vehicle not found' });
 
   const { rows } = await pool.query(
     `INSERT INTO insurance_records
-       (vehicle_id, insurance_company_name, policy_number, start_date, expiry_date, premium_amount, document_name, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-    [req.params.id, insurance_company_name, policy_number, start_date, expiry_date, premium_amount, document_name || null, req.user.name]
+       (vehicle_id, insurance_company_name, policy_number, start_date, expiry_date, premium_amount, created_by)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+    [req.params.id, insurance_company_name, policy_number, start_date, expiry_date, premium_amount, req.user.name]
   );
   res.status(201).json({ ...rows[0], renewal_status: renewalStatus(rows[0].expiry_date) });
 }));

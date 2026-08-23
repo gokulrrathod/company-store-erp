@@ -415,6 +415,15 @@ const MIGRATIONS = [
       ALTER TABLE payments ADD CONSTRAINT payments_voucher_number_key UNIQUE (voucher_number);
     `,
   },
+  {
+    // Superseded by the attachments table (entity_type='insurance_record', already wired into the
+    // Vehicle detail page) — this free-text filename field was never real file storage and had
+    // already gone unused in the frontend since that upload capability was added.
+    name: '018_drop_insurance_document_name',
+    sql: `
+      ALTER TABLE insurance_records DROP COLUMN IF EXISTS document_name;
+    `,
+  },
 ];
 
 async function ensureMigrationsTable(client) {

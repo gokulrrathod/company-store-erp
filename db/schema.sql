@@ -737,7 +737,6 @@ CREATE TABLE IF NOT EXISTS insurance_records (
     start_date DATE NOT NULL,
     expiry_date DATE NOT NULL,
     premium_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
-    document_name VARCHAR(255),
     created_by VARCHAR(100) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CHECK (expiry_date > start_date)
