@@ -40,11 +40,27 @@ export default function DataTable({
     setDisplayedRowCount(params.api.getDisplayedRowCount());
   }, []);
 
+  // fillHeight pages get one continuous card that fills the available screen height —
+  // the grid itself stays sized to its actual rows (no internal blank gap), and any
+  // leftover space renders as plain card background instead of bare page background.
+  const cardSx = fillHeight
+    ? {
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: '10px',
+        bgcolor: 'background.paper',
+        overflow: 'hidden',
+      }
+    : undefined;
+
   if (!rowData || rowData.length === 0) {
     return (
       <Box
         sx={{
-          height: 140,
+          height: fillHeight ? '100%' : 140,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -61,17 +77,14 @@ export default function DataTable({
 
   const visibleRows = pagination ? Math.min(displayedRowCount, pageSize) : displayedRowCount;
   const contentHeight = HEADER_HEIGHT + visibleRows * ROW_HEIGHT + (pagination ? PAGER_HEIGHT : 0) + 4;
-  const height = fillHeight
-    ? `min(${Math.max(minHeight, contentHeight)}px, 100%)`
-    : Math.min(maxHeight, Math.max(minHeight, contentHeight));
+  const height = Math.min(maxHeight, Math.max(minHeight, contentHeight));
 
-  return (
+  const grid = (
     <Box
       className="ag-theme-quartz"
       sx={{
-        height,
+        height: fillHeight ? `min(${height}px, 100%)` : height,
         minHeight: fillHeight ? 0 : undefined,
-        overflow: fillHeight ? 'hidden' : undefined,
         width: '100%',
         '--ag-active-color': '#4F46E5',
         '--ag-selected-row-background-color': '#EEF2FF',
@@ -84,6 +97,7 @@ export default function DataTable({
         '--ag-border-radius': '10px',
         '--ag-row-height': `${ROW_HEIGHT}px`,
         '--ag-header-height': `${HEADER_HEIGHT}px`,
+        ...(fillHeight ? { '& .ag-root-wrapper': { border: 'none' } } : {}),
       }}
     >
       <AgGridReact
@@ -103,4 +117,6 @@ export default function DataTable({
       />
     </Box>
   );
+
+  return fillHeight ? <Box sx={cardSx}>{grid}</Box> : grid;
 }
