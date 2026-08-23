@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  Typography, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, Stack, IconButton, Alert,
-  RadioGroup, FormControlLabel, Radio, TextField,
+  Box, Typography, Chip, Button, Dialog, DialogTitle, DialogContent, DialogActions, Stack, IconButton, Alert,
+  RadioGroup, FormControlLabel, Radio, TextField, MenuItem, Paper, Avatar,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import SendIcon from '@mui/icons-material/Send';
-import DataTable from '../components/DataTable.jsx';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ListPageLayout from '../components/ListPageLayout.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import RHFSelect from '../components/form/RHFSelect.jsx';
@@ -30,10 +32,70 @@ const PRIORITIES = [
   { value: 'URGENT', label: 'Urgent' },
 ];
 const priorityColor = { LOW: 'default', MEDIUM: 'default', HIGH: 'warning', URGENT: 'error' };
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+
+function RequestCard({ request, onApprove, onReject, onForward, canAction }) {
+  return (
+    <Paper variant="outlined" sx={{ borderRadius: '10px', mb: 2, overflow: 'hidden' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 2, flexWrap: 'wrap' }}>
+        <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>
+          <AssignmentIcon fontSize="small" />
+        </Avatar>
+        <Typography variant="subtitle1" fontWeight={700}>{request.requisition_number}</Typography>
+        <Chip size="small" label={request.priority} color={priorityColor[request.priority]} />
+        <Chip size="small" label={request.status.replace(/_/g, ' ')} color={statusColor[request.status]} />
+        <Box sx={{ flexGrow: 1 }} />
+        {canAction && request.status === 'PENDING' && (
+          <>
+            <IconButton size="small" color="success" onClick={() => onApprove(request)} title="Approve & issue"><CheckIcon fontSize="small" /></IconButton>
+            <IconButton size="small" color="error" onClick={() => onReject(request.id)} title="Reject"><CloseIcon fontSize="small" /></IconButton>
+            <IconButton size="small" color="info" onClick={() => onForward(request.id)} title="Forward to Purchase (stock unavailable)"><SendIcon fontSize="small" /></IconButton>
+          </>
+        )}
+        {canAction && ['FORWARDED_TO_PURCHASE', 'PO_RAISED'].includes(request.status) && (
+          <>
+            <IconButton size="small" color="success" onClick={() => onApprove(request)} title="Stock arrived — approve & issue"><CheckIcon fontSize="small" /></IconButton>
+            <IconButton size="small" color="error" onClick={() => onReject(request.id)} title="Reject"><CloseIcon fontSize="small" /></IconButton>
+          </>
+        )}
+      </Box>
+
+      <Box sx={{ px: 2, pb: 1.5, display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+        <Typography variant="body2" color="text.secondary">
+          Item: <strong style={{ color: 'inherit' }}>{request.item_code} — {request.item_name}</strong>
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Requested By: <strong style={{ color: 'inherit' }}>{request.requested_by} ({request.department})</strong>
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Quantity: <strong style={{ color: 'inherit' }}>
+            Req {request.quantity_requested} &middot; Issued {request.quantity_issued ?? '—'} &middot; Bal {request.balance_stock ?? '—'}
+          </strong>
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Project / Due: <strong style={{ color: 'inherit' }}>
+            {request.project_name || '—'} &middot; {request.required_date ? new Date(request.required_date).toLocaleDateString() : 'No due date'}
+          </strong>
+        </Typography>
+      </Box>
+
+      {request.purpose && (
+        <Box sx={{ px: 2, py: 1.5, borderTop: '1px solid', borderColor: 'divider', bgcolor: 'background.default' }}>
+          <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color: 'text.secondary' }}>
+            Purpose
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 0.5 }}>{request.purpose}</Typography>
+        </Box>
+      )}
+    </Paper>
+  );
+}
 
 export default function MaterialRequestsPage() {
   const { user } = useAuth();
   const [requests, setRequests] = useState([]);
+  const [pageSize, setPageSize] = useState(20);
+  const [page, setPage] = useState(0);
   const [items, setItems] = useState([]);
   const [projects, setProjects] = useState([]);
   const [open, setOpen] = useState(false);
@@ -130,87 +192,14 @@ export default function MaterialRequestsPage() {
 
   const canAction = ['STORE_MANAGER', 'ADMIN'].includes(user?.role);
 
-  const columnDefs = [
-    { field: 'requisition_number', headerName: 'Requisition No.', minWidth: 150 },
-    { headerName: 'Item', minWidth: 180, valueGetter: (p) => `${p.data.item_code} — ${p.data.item_name}` },
-    {
-      field: 'requested_by',
-      headerName: 'Requested By',
-      minWidth: 160,
-      cellRenderer: (p) => (
-        <div style={{ lineHeight: 1.35, padding: '6px 0' }}>
-          <div style={{ fontWeight: 600 }}>{p.data.requested_by}</div>
-          <div style={{ fontSize: '0.72rem', color: '#64748B' }}>{p.data.department}</div>
-        </div>
-      ),
-    },
-    {
-      field: 'quantity_requested',
-      headerName: 'Quantity',
-      minWidth: 170,
-      cellRenderer: (p) => (
-        <div style={{ lineHeight: 1.35, padding: '6px 0' }}>
-          <div style={{ fontWeight: 600 }}>Req {p.data.quantity_requested}</div>
-          <div style={{ fontSize: '0.72rem', color: '#64748B' }}>
-            Issued {p.data.quantity_issued ?? '—'} &middot; Bal {p.data.balance_stock ?? '—'}
-          </div>
-        </div>
-      ),
-    },
-    { field: 'purpose', headerName: 'Purpose', minWidth: 170, wrapText: true, autoHeight: true, valueGetter: (p) => p.data.purpose || '—' },
-    {
-      field: 'project_name',
-      headerName: 'Project / Due',
-      minWidth: 170,
-      cellRenderer: (p) => (
-        <div style={{ lineHeight: 1.35, padding: '6px 0' }}>
-          <div style={{ fontWeight: 600 }}>{p.data.project_name || '—'}</div>
-          <div style={{ fontSize: '0.72rem', color: '#64748B' }}>
-            {p.data.required_date ? new Date(p.data.required_date).toLocaleDateString() : 'No due date'}
-          </div>
-        </div>
-      ),
-    },
-    {
-      field: 'priority', headerName: 'Priority', minWidth: 100,
-      cellRenderer: (p) => <Chip size="small" label={p.value} color={priorityColor[p.value]} />,
-    },
-    {
-      field: 'status',
-      headerName: 'Status',
-      minWidth: 120,
-      pinned: 'right',
-      cellRenderer: (p) => <Chip size="small" label={p.value} color={statusColor[p.value]} />,
-    },
-    {
-      headerName: 'Actions',
-      minWidth: 160,
-      pinned: 'right',
-      sortable: false,
-      filter: false,
-      cellRenderer: (p) => {
-        if (!canAction) return null;
-        if (p.data.status === 'PENDING') {
-          return (
-            <>
-              <IconButton size="small" color="success" onClick={() => openApprove(p.data)} title="Approve &amp; issue"><CheckIcon fontSize="small" /></IconButton>
-              <IconButton size="small" color="error" onClick={() => setStatus(p.data.id, 'REJECTED')} title="Reject"><CloseIcon fontSize="small" /></IconButton>
-              <IconButton size="small" color="info" onClick={() => forward(p.data.id)} title="Forward to Purchase (stock unavailable)"><SendIcon fontSize="small" /></IconButton>
-            </>
-          );
-        }
-        if (['FORWARDED_TO_PURCHASE', 'PO_RAISED'].includes(p.data.status)) {
-          return (
-            <>
-              <IconButton size="small" color="success" onClick={() => openApprove(p.data)} title="Stock arrived — approve &amp; issue"><CheckIcon fontSize="small" /></IconButton>
-              <IconButton size="small" color="error" onClick={() => setStatus(p.data.id, 'REJECTED')} title="Reject"><CloseIcon fontSize="small" /></IconButton>
-            </>
-          );
-        }
-        return null;
-      },
-    },
-  ];
+  const totalPages = Math.max(1, Math.ceil(requests.length / pageSize));
+  const clampedPage = Math.min(page, totalPages - 1);
+  const pageRequests = useMemo(
+    () => requests.slice(clampedPage * pageSize, clampedPage * pageSize + pageSize),
+    [requests, clampedPage, pageSize]
+  );
+  const rangeStart = requests.length === 0 ? 0 : clampedPage * pageSize + 1;
+  const rangeEnd = Math.min(requests.length, clampedPage * pageSize + pageSize);
 
   return (
     <ListPageLayout
@@ -223,7 +212,52 @@ export default function MaterialRequestsPage() {
         </Stack>
       }
     >
-      <DataTable rowData={requests} columnDefs={columnDefs} getRowId={(p) => String(p.data.id)} rowHeight={48} fillHeight />
+      <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', pr: 0.5 }}>
+          {requests.length === 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>No material requests yet.</Typography>
+          )}
+          {pageRequests.map((r) => (
+            <RequestCard
+              key={r.id}
+              request={r}
+              canAction={canAction}
+              onApprove={openApprove}
+              onReject={(id) => setStatus(id, 'REJECTED')}
+              onForward={forward}
+            />
+          ))}
+        </Box>
+
+        {requests.length > 0 && (
+          <Box sx={{
+            flexShrink: 0, display: 'flex', alignItems: 'center', gap: 2,
+            px: 1, py: 1, borderTop: '1px solid', borderColor: 'divider',
+          }}>
+            <Stack direction="row" alignItems="center" gap={1}>
+              <Typography variant="body2" color="text.secondary">Page Size:</Typography>
+              <TextField
+                select size="small" value={pageSize}
+                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
+                sx={{ width: 90 }}
+              >
+                {PAGE_SIZE_OPTIONS.map((n) => <MenuItem key={n} value={n}>{n}</MenuItem>)}
+              </TextField>
+            </Stack>
+            <Box sx={{ flexGrow: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+              {rangeStart} to {rangeEnd} of {requests.length}
+            </Typography>
+            <IconButton size="small" disabled={clampedPage === 0} onClick={() => setPage(clampedPage - 1)}>
+              <ChevronLeftIcon fontSize="small" />
+            </IconButton>
+            <Typography variant="body2" color="text.secondary">Page {clampedPage + 1} of {totalPages}</Typography>
+            <IconButton size="small" disabled={clampedPage >= totalPages - 1} onClick={() => setPage(clampedPage + 1)}>
+              <ChevronRightIcon fontSize="small" />
+            </IconButton>
+          </Box>
+        )}
+      </Box>
 
       <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>New Material Request</DialogTitle>
