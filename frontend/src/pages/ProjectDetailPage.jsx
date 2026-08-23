@@ -7,6 +7,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, Checkbox,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import LoadingState from '../components/LoadingState.jsx';
 import AddIcon from '@mui/icons-material/Add';
 import DataTable from '../components/DataTable.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
@@ -205,7 +206,7 @@ export default function ProjectDetailPage() {
     }
   };
 
-  if (!project) return <Typography>Loading...</Typography>;
+  if (!project) return <LoadingState label="Loading project..." />;
 
   const dprColumnDefs = [
     { field: 'report_date', headerName: 'Date', minWidth: 110, valueFormatter: (p) => new Date(p.value).toLocaleDateString() },

@@ -8,6 +8,7 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
+import LoadingState from '../components/LoadingState.jsx';
 import DataTable from '../components/DataTable.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import RHFSelect from '../components/form/RHFSelect.jsx';
@@ -137,7 +138,7 @@ export default function ScheduleDetailPage() {
     }
   };
 
-  if (!schedule) return <Typography>Loading...</Typography>;
+  if (!schedule) return <LoadingState label="Loading schedule..." />;
 
   const inspectionColumnDefs = [
     { field: 'inspection_stage', headerName: 'Stage', minWidth: 140, valueFormatter: (p) => p.value.replace(/_/g, ' ') },

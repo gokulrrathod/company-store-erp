@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { Controller } from 'react-hook-form';
+import LoadingState from '../components/LoadingState.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import RHFSelect from '../components/form/RHFSelect.jsx';
 import { dispatchSchema, paymentSchema } from '../validation/schemas.js';
@@ -122,7 +123,7 @@ export default function SalesOrderDetailPage() {
     }
   };
 
-  if (!order) return <Typography>Loading...</Typography>;
+  if (!order) return <LoadingState label="Loading sales order..." />;
 
   return (
     <Box sx={{ maxWidth: 800 }}>

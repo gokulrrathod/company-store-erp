@@ -9,6 +9,7 @@ import HourglassIcon from '@mui/icons-material/HourglassTop';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import DataTable from '../../components/DataTable.jsx';
+import LoadingState from '../../components/LoadingState.jsx';
 import { StatCard, BarListChart, DonutChart, TrendChart, ApprovalsCard } from '../../components/dashboard/DashboardWidgets.jsx';
 import { api } from '../../api/client.js';
 
@@ -22,7 +23,7 @@ export default function StoreDashboard() {
     api.get('/dashboard/summary').then((res) => setSummary(res.data)).catch(() => setSummary(null));
   }, []);
 
-  if (!summary) return <Typography>Loading dashboard...</Typography>;
+  if (!summary) return <LoadingState label="Loading dashboard..." />;
 
   const columnDefs = [
     { field: 'grn_number', headerName: 'GRN #', minWidth: 140 },

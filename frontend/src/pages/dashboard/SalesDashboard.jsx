@@ -7,6 +7,7 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import DataTable from '../../components/DataTable.jsx';
+import LoadingState from '../../components/LoadingState.jsx';
 import { StatCard, BarListChart, DonutChart, ApprovalsCard } from '../../components/dashboard/DashboardWidgets.jsx';
 import { api } from '../../api/client.js';
 
@@ -23,7 +24,7 @@ export default function SalesDashboard() {
     api.get('/dashboard/sales-summary').then((res) => setSummary(res.data)).catch(() => setSummary(null));
   }, []);
 
-  if (!summary) return <Typography>Loading dashboard...</Typography>;
+  if (!summary) return <LoadingState label="Loading dashboard..." />;
 
   const columnDefs = [
     { field: 'enquiry_number', headerName: 'Enquiry No.', minWidth: 140 },

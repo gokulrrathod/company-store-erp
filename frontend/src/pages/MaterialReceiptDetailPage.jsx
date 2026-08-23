@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Typography, Chip, Button, Stack, Alert, IconButton } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import LoadingState from '../components/LoadingState.jsx';
 import DataTable from '../components/DataTable.jsx';
 import AttachmentsPanel from '../components/AttachmentsPanel.jsx';
 import { api } from '../api/client.js';
@@ -43,7 +44,7 @@ export default function MaterialReceiptDetailPage() {
     }
   };
 
-  if (!detail) return <Typography>Loading...</Typography>;
+  if (!detail) return <LoadingState label="Loading receipt..." />;
 
   const canInspect = ['QUALITY', 'ADMIN'].includes(user?.role);
   const canApprove = ['STORE_MANAGER', 'ADMIN'].includes(user?.role);

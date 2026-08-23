@@ -8,6 +8,7 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
+import LoadingState from '../components/LoadingState.jsx';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DataTable from '../components/DataTable.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
@@ -71,7 +72,7 @@ export default function ProductionPlanDetailPage() {
     }
   };
 
-  if (!plan) return <Typography>Loading...</Typography>;
+  if (!plan) return <LoadingState label="Loading production plan..." />;
 
   const columnDefs = [
     { field: 'equipment_name', headerName: 'Equipment', minWidth: 160 },

@@ -8,6 +8,7 @@ import StorefrontIcon from '@mui/icons-material/Storefront';
 import PaidIcon from '@mui/icons-material/Paid';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import DataTable from '../../components/DataTable.jsx';
+import LoadingState from '../../components/LoadingState.jsx';
 import { StatCard, BarListChart, RatioBarChart, DonutChart, ApprovalsCard } from '../../components/dashboard/DashboardWidgets.jsx';
 import { api } from '../../api/client.js';
 
@@ -21,7 +22,7 @@ export default function PurchaseDashboard() {
     api.get('/dashboard/purchase-summary').then((res) => setSummary(res.data)).catch(() => setSummary(null));
   }, []);
 
-  if (!summary) return <Typography>Loading dashboard...</Typography>;
+  if (!summary) return <LoadingState label="Loading dashboard..." />;
 
   const columnDefs = [
     { field: 'po_number', headerName: 'PO Number', minWidth: 150 },

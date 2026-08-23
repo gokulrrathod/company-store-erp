@@ -6,6 +6,7 @@ import {
   Box, Typography, Chip, Button, Stack, Alert, IconButton, Paper, Grid, Divider,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import LoadingState from '../components/LoadingState.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import RHFSelect from '../components/form/RHFSelect.jsx';
 import { quotationSchema, negotiateSchema, confirmOrderSchema } from '../validation/schemas.js';
@@ -98,7 +99,7 @@ export default function EnquiryDetailPage() {
     }
   };
 
-  if (!enquiry) return <Typography>Loading...</Typography>;
+  if (!enquiry) return <LoadingState label="Loading enquiry..." />;
 
   return (
     <Box sx={{ maxWidth: 800 }}>

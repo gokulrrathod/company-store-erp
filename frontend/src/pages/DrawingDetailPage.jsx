@@ -7,6 +7,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, Checkbox, TextField,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import LoadingState from '../components/LoadingState.jsx';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -243,7 +244,7 @@ export default function DrawingDetailPage() {
     }
   };
 
-  if (!drawing) return <Typography>Loading...</Typography>;
+  if (!drawing) return <LoadingState label="Loading drawing..." />;
 
   const inputSheetCompleted = drawing.input_sheet?.status === 'COMPLETED';
 
