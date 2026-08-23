@@ -11,7 +11,7 @@ export default function NavShell({ children }) {
       <Header />
       <Box sx={{ display: 'flex', flexGrow: 1, minHeight: 0 }}>
         <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
-        <Box sx={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'auto', bgcolor: 'background.default', px: 3, py: 3 }}>
+        <Box sx={{ flexGrow: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'auto', bgcolor: 'background.default', padding: '5px' }}>
           {children}
         </Box>
       </Box>
