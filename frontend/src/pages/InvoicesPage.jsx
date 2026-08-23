@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import DataTable from '../components/DataTable.jsx';
 import ListPageLayout from '../components/ListPageLayout.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
-import RHFSelect from '../components/form/RHFSelect.jsx';
+import RHFAutocomplete from '../components/form/RHFAutocomplete.jsx';
 import { purchaseInvoiceSchema, salesInvoiceSchema } from '../validation/schemas.js';
 import { applyServerErrors } from '../utils/applyServerErrors.js';
 import { api } from '../api/client.js';
@@ -29,7 +29,7 @@ function LineItemsEditor({ control, name, items, setValue }) {
       <Stack spacing={1.5}>
         {fields.map((field, idx) => (
           <Stack direction="row" spacing={1} key={field.id} alignItems="flex-start">
-            <RHFSelect
+            <RHFAutocomplete
               name={`${name}.${idx}.item_id`} control={control} label="Item (optional)"
               options={items} getLabel={(i) => `${i.code} — ${i.name}`} getValue={(i) => i.id}
               onValueChange={(_, item) => {
@@ -197,8 +197,8 @@ export default function InvoicesPage() {
             <Alert severity="info">Three-way match: the selected GRN must be Approved (post-inspection) against the selected PO. Invoice/line amounts are computed from the line items below; selecting a PO pre-fills its lines.</Alert>
             <RHFTextField name="party_name" control={purchaseForm.control} label="Party (Vendor) Name" required />
             <RHFTextField name="gstin" control={purchaseForm.control} label="GSTIN" />
-            <RHFSelect name="purchase_order_id" control={purchaseForm.control} label="Purchase Order" required options={purchaseOrders} getLabel={(o) => o.po_number} getValue={(o) => o.id} />
-            <RHFSelect name="material_receipt_id" control={purchaseForm.control} label="GRN (Approved only)" required options={eligibleGrns} getLabel={(g) => g.grn_number} getValue={(g) => g.id} />
+            <RHFAutocomplete name="purchase_order_id" control={purchaseForm.control} label="Purchase Order" required options={purchaseOrders} getLabel={(o) => o.po_number} getValue={(o) => o.id} />
+            <RHFAutocomplete name="material_receipt_id" control={purchaseForm.control} label="GRN (Approved only)" required options={eligibleGrns} getLabel={(g) => g.grn_number} getValue={(g) => g.id} />
             <RHFTextField name="gst_percent" control={purchaseForm.control} label="GST %" type="number" />
             <RHFTextField name="due_date" control={purchaseForm.control} label="Due Date" type="date" InputLabelProps={{ shrink: true }} />
             <LineItemsEditor control={purchaseForm.control} name="lines" items={items} setValue={purchaseForm.setValue} />
@@ -215,7 +215,7 @@ export default function InvoicesPage() {
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {formError && <Alert severity="error">{formError}</Alert>}
-            <RHFSelect name="sales_order_id" control={salesForm.control} label="Sales Order" required options={salesOrders} getLabel={(o) => `${o.so_number} — ${o.customer_name}`} getValue={(o) => o.id} />
+            <RHFAutocomplete name="sales_order_id" control={salesForm.control} label="Sales Order" required options={salesOrders} getLabel={(o) => `${o.so_number} — ${o.customer_name}`} getValue={(o) => o.id} />
             <RHFTextField name="gstin" control={salesForm.control} label="GSTIN" />
             <RHFTextField name="gst_percent" control={salesForm.control} label="GST %" type="number" />
             <RHFTextField name="due_date" control={salesForm.control} label="Due Date" type="date" InputLabelProps={{ shrink: true }} />

@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import FormPage from '../components/FormPage.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import RHFSelect from '../components/form/RHFSelect.jsx';
+import RHFAutocomplete from '../components/form/RHFAutocomplete.jsx';
 import { rejectedMaterialSchema } from '../validation/schemas.js';
 import { applyServerErrors } from '../utils/applyServerErrors.js';
 import { api } from '../api/client.js';
@@ -66,13 +67,13 @@ export default function RejectedMaterialFormPage() {
     >
       <Grid container spacing={2.5}>
         <Grid item xs={12} sm={6}>
-          <RHFSelect
+          <RHFAutocomplete
             name="supplier_id" control={control} label="Supplier" required
             options={suppliers} getLabel={(s) => s.name} getValue={(s) => s.id}
           />
         </Grid>
         <Grid item xs={12} sm={6}>
-          <RHFSelect
+          <RHFAutocomplete
             name="item_id" control={control} label="Item" required
             options={items} getLabel={(i) => `${i.code} — ${i.name}`} getValue={(i) => i.id}
           />

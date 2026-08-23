@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import FormPage from '../components/FormPage.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import RHFSelect from '../components/form/RHFSelect.jsx';
+import RHFAutocomplete from '../components/form/RHFAutocomplete.jsx';
 import { purchaseOrderSchema } from '../validation/schemas.js';
 import { applyServerErrors } from '../utils/applyServerErrors.js';
 import { api } from '../api/client.js';
@@ -66,7 +67,7 @@ export default function PurchaseOrderFormPage() {
     >
       <Grid container spacing={2.5}>
         <Grid item xs={12} sm={6}>
-          <RHFSelect
+          <RHFAutocomplete
             name="supplier_id" control={control} label="Supplier" required
             options={suppliers} getLabel={(s) => s.name} getValue={(s) => s.id}
           />
@@ -78,7 +79,7 @@ export default function PurchaseOrderFormPage() {
           />
         </Grid>
         <Grid item xs={12} sm={6}>
-          <RHFSelect
+          <RHFAutocomplete
             name="project_id" control={control} label="Project (optional — draws from that project's budget)"
             options={projects} getLabel={(p) => p.project_name} getValue={(p) => p.id}
           />
@@ -101,7 +102,7 @@ export default function PurchaseOrderFormPage() {
       <Stack spacing={2}>
         {fields.map((field, idx) => (
           <Stack direction="row" spacing={1.5} key={field.id} alignItems="flex-start">
-            <RHFSelect
+            <RHFAutocomplete
               name={`lines.${idx}.mr_id`} control={control} label="Fulfilling MR (optional)"
               options={forwardedMrs} getLabel={(m) => `${m.requisition_number} — ${m.item_code} x ${m.quantity_requested}`} getValue={(m) => m.id}
               onValueChange={(_, mr) => {
@@ -112,7 +113,7 @@ export default function PurchaseOrderFormPage() {
               }}
               sx={{ flex: 2 }}
             />
-            <RHFSelect
+            <RHFAutocomplete
               name={`lines.${idx}.item_id`} control={control} label="Item" required
               options={items} getLabel={(i) => `${i.code} — ${i.name}`} getValue={(i) => i.id}
               sx={{ flex: 2 }}

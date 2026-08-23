@@ -9,6 +9,7 @@ import DataTable from '../components/DataTable.jsx';
 import ListPageLayout from '../components/ListPageLayout.jsx';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import RHFSelect from '../components/form/RHFSelect.jsx';
+import RHFAutocomplete from '../components/form/RHFAutocomplete.jsx';
 import { stockMovementSchema } from '../validation/schemas.js';
 import { applyServerErrors } from '../utils/applyServerErrors.js';
 import { api } from '../api/client.js';
@@ -85,7 +86,7 @@ export default function StockMovementsPage() {
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {formError && <Alert severity="error">{formError}</Alert>}
-            <RHFSelect name="item_id" control={control} label="Item" required options={items} getLabel={(i) => `${i.code} — ${i.name}`} getValue={(i) => i.id} />
+            <RHFAutocomplete name="item_id" control={control} label="Item" required options={items} getLabel={(i) => `${i.code} — ${i.name}`} getValue={(i) => i.id} />
             <RHFSelect name="type" control={control} label="Type" required options={TYPES} getLabel={(t) => t.label} getValue={(t) => t.value} />
             <RHFTextField name="quantity" control={control} label="Quantity" type="number" required />
             <RHFTextField name="reference" control={control} label="Reference" />
