@@ -34,6 +34,16 @@ export const vmgTheme = createTheme({
     h6: { fontWeight: 700 },
   },
   components: {
+    // The app shell (NavShell) owns scrolling internally via its own overflow:auto content
+    // pane — html/body must never scroll themselves, or a stray tall/portal-rendered element
+    // can make the browser show its own outer scrollbar alongside the app's, which looks broken
+    // and scrolls the sidebar/content out of sync with each other.
+    MuiCssBaseline: {
+      styleOverrides: {
+        'html, body': { height: '100%', overflow: 'hidden', margin: 0 },
+        '#root': { height: '100%' },
+      },
+    },
     MuiAppBar: {
       styleOverrides: {
         root: {
