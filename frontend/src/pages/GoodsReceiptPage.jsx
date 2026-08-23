@@ -115,7 +115,7 @@ export default function GoodsReceiptPage() {
         </Stack>
       }
     >
-      <Box sx={{ overflow: 'auto', pr: 0.5 }}>
+      <Box sx={{ height: '100%', overflow: 'auto', pr: 0.5 }}>
         {receipts.length === 0 && (
           <Typography variant="body2" color="text.secondary" sx={{ p: 2 }}>No receipts recorded yet.</Typography>
         )}
