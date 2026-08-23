@@ -20,6 +20,16 @@ async function nextInvoiceNumber(client, invoiceType, prefix) {
   return `${prefix}-${year}-${String(lastSeq + 1).padStart(4, '0')}`;
 }
 
+async function nextVoucherNumber(client) {
+  const year = new Date().getFullYear();
+  const { rows } = await client.query(
+    `SELECT voucher_number FROM payments WHERE voucher_number LIKE $1 ORDER BY id DESC LIMIT 1`,
+    [`PV-${year}-%`]
+  );
+  const lastSeq = rows.length ? Number(rows[0].voucher_number.split('-').pop()) : 0;
+  return `PV-${year}-${String(lastSeq + 1).padStart(4, '0')}`;
+}
+
 async function withBalance(rows) {
   const ids = rows.map((r) => r.id);
   if (!ids.length) return rows;
@@ -157,7 +167,7 @@ router.post('/sales', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(salesIn
 }));
 
 router.post('/:id/payments', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(invoicePaymentSchema), asyncHandler(async (req, res) => {
-  const { payment_date, mode, reference_number, amount_paid } = req.body;
+  const { payment_date, mode, bank_name, utr_or_cheque_number, amount_paid } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -170,10 +180,11 @@ router.post('/:id/payments', requireRole(ROLES.ACCOUNTS, ROLES.ADMIN), validate(
     const balance = Number(invoice.total_amount) - alreadyPaid;
     if (Number(amount_paid) > balance) throw new Error(`Payment amount exceeds outstanding balance of ₹ ${balance.toFixed(2)}`);
 
+    const voucher_number = await nextVoucherNumber(client);
     const { rows: paymentRows } = await client.query(
-      `INSERT INTO payments (invoice_id, payment_date, mode, reference_number, amount_paid, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [req.params.id, payment_date || new Date(), mode, reference_number || null, amount_paid, req.user.name]
+      `INSERT INTO payments (invoice_id, voucher_number, payment_date, mode, bank_name, utr_or_cheque_number, amount_paid, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [req.params.id, voucher_number, payment_date || new Date(), mode, bank_name || null, utr_or_cheque_number || null, amount_paid, req.user.name]
     );
 
     const newPaid = alreadyPaid + Number(amount_paid);
@@ -203,10 +214,9 @@ router.get('/:id/payments/:paymentId/voucher-pdf', asyncHandler(async (req, res)
   if (!payRows.length) return res.status(404).json({ error: 'Payment not found for this invoice' });
   const payment = payRows[0];
 
-  const voucherNumber = `PV-${String(payment.id).padStart(6, '0')}`;
-  await streamPdf(res, `${voucherNumber}.pdf`, (doc) => {
+  await streamPdf(res, `${payment.voucher_number}.pdf`, (doc) => {
     pdfTitle(doc, invoice.invoice_type === 'PURCHASE' ? 'Payment Voucher' : 'Receipt Voucher');
-    pdfField(doc, 'Voucher Number', voucherNumber); doc.moveDown(0.4);
+    pdfField(doc, 'Voucher Number', payment.voucher_number); doc.moveDown(0.4);
     pdfField(doc, 'Date', new Date(payment.payment_date).toLocaleDateString()); doc.moveDown(1);
 
     doc.fontSize(12).font('Helvetica-Bold').text(invoice.invoice_type === 'PURCHASE' ? 'Paid To' : 'Received From'); doc.moveDown(0.3);
@@ -216,7 +226,8 @@ router.get('/:id/payments/:paymentId/voucher-pdf', asyncHandler(async (req, res)
     doc.fontSize(12).font('Helvetica-Bold').text('Payment Details'); doc.moveDown(0.3);
     pdfField(doc, 'Invoice Number', invoice.invoice_number); doc.moveDown(0.2);
     pdfField(doc, 'Mode', payment.mode); doc.moveDown(0.2);
-    pdfField(doc, 'Reference / UTR', payment.reference_number); doc.moveDown(0.2);
+    pdfField(doc, 'Bank', payment.bank_name); doc.moveDown(0.2);
+    pdfField(doc, 'UTR / Cheque Number', payment.utr_or_cheque_number); doc.moveDown(0.2);
     pdfField(doc, 'Amount Paid', `Rs. ${Number(payment.amount_paid).toLocaleString('en-IN')}`); doc.moveDown(3);
 
     doc.fontSize(10).text('Prepared By: _______________________');

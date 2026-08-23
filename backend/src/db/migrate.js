@@ -401,6 +401,20 @@ const MIGRATIONS = [
       ALTER TABLE engineering_change_notices DROP COLUMN IF EXISTS new_revision;
     `,
   },
+  {
+    name: '017_payment_voucher_bank_utr',
+    sql: `
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS voucher_number VARCHAR(50);
+      ALTER TABLE payments ADD COLUMN IF NOT EXISTS bank_name VARCHAR(150);
+      ALTER TABLE payments RENAME COLUMN reference_number TO utr_or_cheque_number;
+
+      UPDATE payments SET voucher_number = 'PV-' || to_char(created_at, 'YYYY') || '-' || LPAD(id::text, 4, '0')
+      WHERE voucher_number IS NULL;
+
+      ALTER TABLE payments ALTER COLUMN voucher_number SET NOT NULL;
+      ALTER TABLE payments ADD CONSTRAINT payments_voucher_number_key UNIQUE (voucher_number);
+    `,
+  },
 ];
 
 async function ensureMigrationsTable(client) {

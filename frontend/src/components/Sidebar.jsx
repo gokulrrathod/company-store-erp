@@ -100,6 +100,7 @@ export const NAV_GROUPS = [
     section: 'Accounts',
     items: [
       { label: 'Invoices & Payments', path: '/invoices', icon: PaymentsIcon, roles: ['ACCOUNTS', 'FINANCE', 'MANAGEMENT', 'ADMIN'] },
+      { label: 'Document Archive', path: '/document-archive', icon: HistoryIcon, roles: ['ACCOUNTS', 'MANAGEMENT', 'ADMIN'] },
     ],
   },
   {

@@ -782,9 +782,11 @@ CREATE TABLE IF NOT EXISTS invoices (
 CREATE TABLE IF NOT EXISTS payments (
     id SERIAL PRIMARY KEY,
     invoice_id INTEGER NOT NULL REFERENCES invoices(id),
+    voucher_number VARCHAR(50) NOT NULL UNIQUE,
     payment_date DATE NOT NULL DEFAULT CURRENT_DATE,
     mode VARCHAR(20) NOT NULL CHECK (mode IN ('NEFT', 'RTGS', 'CHEQUE', 'CASH', 'UPI')),
-    reference_number VARCHAR(80),
+    bank_name VARCHAR(150),
+    utr_or_cheque_number VARCHAR(80),
     amount_paid NUMERIC(14,2) NOT NULL CHECK (amount_paid > 0),
     created_by VARCHAR(100) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()

@@ -451,6 +451,7 @@ export const salesInvoiceSchema = z.object({
 export const invoicePaymentSchema = z.object({
   payment_date: optionalString(20),
   mode: z.enum(['NEFT', 'RTGS', 'CHEQUE', 'CASH', 'UPI'], { errorMap: () => ({ message: 'Select a payment mode' }) }),
-  reference_number: optionalString(80),
+  bank_name: optionalString(150),
+  utr_or_cheque_number: optionalString(80),
   amount_paid: positiveNumber,
 });

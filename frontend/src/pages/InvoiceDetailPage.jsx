@@ -6,6 +6,7 @@ import { Box, Typography, Chip, Button, Stack, Alert, Paper, Grid, Divider } fro
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import RHFTextField from '../components/form/RHFTextField.jsx';
 import RHFSelect from '../components/form/RHFSelect.jsx';
+import AttachmentsPanel from '../components/AttachmentsPanel.jsx';
 import { invoicePaymentSchema } from '../validation/schemas.js';
 import { applyServerErrors } from '../utils/applyServerErrors.js';
 import { api } from '../api/client.js';
@@ -44,19 +45,19 @@ export default function InvoiceDetailPage() {
 
   const { control, handleSubmit, reset, setError, formState: { isSubmitting } } = useForm({
     resolver: zodResolver(invoicePaymentSchema),
-    defaultValues: { payment_date: '', mode: 'NEFT', reference_number: '', amount_paid: '' },
+    defaultValues: { payment_date: '', mode: 'NEFT', bank_name: '', utr_or_cheque_number: '', amount_paid: '' },
   });
 
   const canPay = ['ACCOUNTS', 'ADMIN'].includes(user?.role);
 
-  const downloadVoucher = async (paymentId) => {
+  const downloadVoucher = async (payment) => {
     setActionError('');
     try {
-      const res = await api.get(`/invoices/${id}/payments/${paymentId}/voucher-pdf`, { responseType: 'blob' });
+      const res = await api.get(`/invoices/${id}/payments/${payment.id}/voucher-pdf`, { responseType: 'blob' });
       const url = URL.createObjectURL(res.data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `PV-${String(paymentId).padStart(6, '0')}.pdf`;
+      a.download = `${payment.voucher_number}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -68,7 +69,7 @@ export default function InvoiceDetailPage() {
     setActionError('');
     try {
       await api.post(`/invoices/${id}/payments`, values);
-      reset({ payment_date: '', mode: 'NEFT', reference_number: '', amount_paid: '' });
+      reset({ payment_date: '', mode: 'NEFT', bank_name: '', utr_or_cheque_number: '', amount_paid: '' });
       load();
     } catch (err) {
       applyServerErrors(err, setError, setActionError);
@@ -119,16 +120,22 @@ export default function InvoiceDetailPage() {
         ))}
       </Section>
 
+      <Section title="Attachments">
+        <AttachmentsPanel entityType="invoice" entityId={invoice.id} canUpload={canPay} title="Scanned Invoice / Supporting Documents" />
+      </Section>
+
       <Section title="Payment History">
         {!invoice.payments.length && <Typography variant="body2" color="text.secondary">No payments recorded yet.</Typography>}
         {invoice.payments.map((p, idx) => (
           <Box key={p.id}>
             {idx > 0 && <Divider sx={{ my: 1.5 }} />}
             <Stack direction="row" justifyContent="space-between" alignItems="center">
-              <Typography variant="body2">{p.mode} {p.reference_number ? `· ${p.reference_number}` : ''} · {p.payment_date?.slice(0, 10)}</Typography>
+              <Typography variant="body2">
+                {p.voucher_number} · {p.mode}{p.bank_name ? ` · ${p.bank_name}` : ''}{p.utr_or_cheque_number ? ` · ${p.utr_or_cheque_number}` : ''} · {p.payment_date?.slice(0, 10)}
+              </Typography>
               <Stack direction="row" spacing={1.5} alignItems="center">
                 <Typography variant="body2" fontWeight={600}>₹ {Number(p.amount_paid).toLocaleString('en-IN')}</Typography>
-                <Button size="small" onClick={() => downloadVoucher(p.id)}>Voucher (PDF)</Button>
+                <Button size="small" onClick={() => downloadVoucher(p)}>Voucher (PDF)</Button>
               </Stack>
             </Stack>
           </Box>
@@ -138,16 +145,19 @@ export default function InvoiceDetailPage() {
       {canPay && invoice.payment_status !== 'PAID' && (
         <Section title="Record Payment">
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={3}>
+            <Grid item xs={12} sm={2.4}>
               <RHFSelect name="mode" control={control} label="Mode" required options={MODES} getLabel={(m) => m.label} getValue={(m) => m.value} />
             </Grid>
-            <Grid item xs={12} sm={3}>
-              <RHFTextField name="reference_number" control={control} label="Reference / UTR" />
+            <Grid item xs={12} sm={2.4}>
+              <RHFTextField name="bank_name" control={control} label="Bank" />
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid item xs={12} sm={2.4}>
+              <RHFTextField name="utr_or_cheque_number" control={control} label="UTR / Cheque No." />
+            </Grid>
+            <Grid item xs={12} sm={2.4}>
               <RHFTextField name="payment_date" control={control} label="Payment Date" type="date" InputLabelProps={{ shrink: true }} />
             </Grid>
-            <Grid item xs={12} sm={3}>
+            <Grid item xs={12} sm={2.4}>
               <RHFTextField name="amount_paid" control={control} label="Amount (₹)" type="number" required />
             </Grid>
           </Grid>

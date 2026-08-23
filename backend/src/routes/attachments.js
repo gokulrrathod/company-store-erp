@@ -12,7 +12,7 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX
 
 const ENTITY_TYPES = [
   'drawing', 'design_input_sheet', 'design_calculation', 'vendor', 'daily_progress_report',
-  'insurance_record', 'material_receipt', 'rejected_material',
+  'insurance_record', 'material_receipt', 'rejected_material', 'invoice',
 ];
 
 router.get('/', asyncHandler(async (req, res) => {

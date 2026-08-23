@@ -37,6 +37,7 @@ import ProjectDetailPage from './pages/ProjectDetailPage.jsx';
 import VehiclesPage from './pages/VehiclesPage.jsx';
 import VehicleDetailPage from './pages/VehicleDetailPage.jsx';
 import InvoicesPage from './pages/InvoicesPage.jsx';
+import DocumentArchivePage from './pages/DocumentArchivePage.jsx';
 import InvoiceDetailPage from './pages/InvoiceDetailPage.jsx';
 import AuditLogPage from './pages/AuditLogPage.jsx';
 
@@ -86,6 +87,7 @@ export default function App() {
                 <Route path="/vehicles" element={<VehiclesPage />} />
                 <Route path="/vehicles/:id" element={<VehicleDetailPage />} />
                 <Route path="/invoices" element={<InvoicesPage />} />
+                <Route path="/document-archive" element={<DocumentArchivePage />} />
                 <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
                 <Route path="/audit-log" element={<AuditLogPage />} />
               </Routes>

@@ -29,6 +29,7 @@ import attachmentsRouter from './routes/attachments.js';
 import machinesRouter from './routes/machines.js';
 import labourRouter from './routes/labour.js';
 import rateChartsRouter from './routes/rateCharts.js';
+import documentArchiveRouter from './routes/documentArchive.js';
 import { runMigrations } from './db/migrate.js';
 
 const app = express();
@@ -63,6 +64,7 @@ app.use('/api/attachments', attachmentsRouter);
 app.use('/api/machines', machinesRouter);
 app.use('/api/labour', labourRouter);
 app.use('/api/rate-charts', rateChartsRouter);
+app.use('/api/document-archive', documentArchiveRouter);
 
 // Centralized error handler: keep unexpected failures as JSON, not HTML stack traces
 app.use((err, req, res, next) => {
