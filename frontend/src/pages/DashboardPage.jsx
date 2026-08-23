@@ -7,11 +7,6 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import ShieldIcon from '@mui/icons-material/GppMaybe';
 import HourglassIcon from '@mui/icons-material/HourglassTop';
 import AssignmentIcon from '@mui/icons-material/Assignment';
-import SwapVertIcon from '@mui/icons-material/SwapVert';
-import TrendingDownIcon from '@mui/icons-material/TrendingDown';
-import EventBusyIcon from '@mui/icons-material/EventBusy';
-import FactCheckIcon from '@mui/icons-material/FactCheck';
-import WarehouseIcon from '@mui/icons-material/Warehouse';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import DataTable from '../components/DataTable.jsx';
 import { api } from '../api/client.js';
@@ -238,40 +233,6 @@ export default function DashboardPage() {
             icon={<ShieldIcon />} color="error" label="Rejected Material" value={`${summary.rejected_count} Lots`} sub="Awaiting Disposal"
             onClick={() => navigate('/rejected-material')} hint="Rejected Material"
           />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            icon={<HourglassIcon />} color="warning" label="Pending QC Inspection" value={summary.pending_inspection_count} sub="GRN awaiting inspection"
-            onClick={() => navigate('/goods-receipt')} hint="Goods Receipt"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            icon={<AssignmentIcon />} color="primary" label="Pending Material Requests" value={summary.pending_requests_count} sub="Awaiting approval"
-            onClick={() => navigate('/material-requests')} hint="Material Requests"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            icon={<SwapVertIcon />} color="primary" label="Daily Inward / Outward"
-            value={`${summary.daily_inward_qty} / ${summary.daily_outward_qty}`} sub="Today, in units"
-            onClick={() => navigate('/stock-movements')} hint="Stock Movements"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            icon={<TrendingDownIcon />} color="primary" label="Monthly Consumption" value={summary.monthly_consumption_qty} sub="Units issued this month"
-            onClick={() => navigate('/stock-movements')} hint="Stock Movements"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard icon={<EventBusyIcon />} color="warning" label="Expiring Materials" value={`${summary.expiring_materials_count} Batches`} sub="Within 30 days" />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard icon={<FactCheckIcon />} color="success" label="Inventory Accuracy" value={`${summary.inventory_accuracy_percent}%`} sub="No negative-stock violations" />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard icon={<WarehouseIcon />} color="primary" label="Warehouse Utilization" value={`${summary.warehouse_utilization_percent}%`} sub="Items with a location assigned" />
         </Grid>
       </Grid>
 
