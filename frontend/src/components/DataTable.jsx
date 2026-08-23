@@ -90,14 +90,16 @@ export default function DataTable({
         '--ag-active-color': '#4F46E5',
         '--ag-selected-row-background-color': '#EEF2FF',
         '--ag-row-hover-color': '#F5F5FF',
-        '--ag-header-background-color': '#F8FAFC',
-        '--ag-header-foreground-color': '#1E293B',
+        '--ag-header-background-color': '#4F46E5',
+        '--ag-header-foreground-color': '#FFFFFF',
         '--ag-font-family': 'inherit',
         '--ag-font-size': '0.8125rem',
         '--ag-border-color': '#E2E8F0',
         '--ag-border-radius': '10px',
         '--ag-row-height': `${ROW_HEIGHT}px`,
         '--ag-header-height': `${HEADER_HEIGHT}px`,
+        '& .ag-header-cell-text': { fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', fontSize: '0.7rem' },
+        '& .ag-icon': { color: '#FFFFFF' },
         ...(fillHeight ? { '& .ag-root-wrapper': { border: 'none' } } : {}),
       }}
     >
