@@ -17,8 +17,8 @@ import { api } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
 
 const COMPANIES = [
-  { value: 'VMG_BARAMATI', label: 'VMG Baramati Industries Pvt. Ltd.' },
-  { value: 'VMG_SUGAR_LLP', label: 'VMG Sugar LLP' },
+  { value: 'UNIT_A', label: 'Unit A' },
+  { value: 'UNIT_B', label: 'Unit B' },
 ];
 const statusColor = { PLANNING: 'default', RUNNING: 'warning', HOLD: 'error', COMPLETED: 'success', CLOSED: 'success' };
 
@@ -35,7 +35,7 @@ export default function ProjectsPage() {
   } = useForm({
     resolver: zodResolver(projectSchema),
     defaultValues: {
-      project_name: '', client_name: '', site_location: '', company: 'VMG_BARAMATI', project_type: '',
+      project_name: '', client_name: '', site_location: '', company: 'UNIT_A', project_type: '',
       start_date: '', expected_completion_date: '', project_value: '', project_manager: user?.name || '', site_engineer: '',
     },
   });
@@ -48,7 +48,7 @@ export default function ProjectsPage() {
 
   const openDialog = () => {
     setFormError('');
-    reset({ project_name: '', client_name: '', site_location: '', company: 'VMG_BARAMATI', project_type: '', start_date: '', expected_completion_date: '', project_value: '', project_manager: user?.name || '', site_engineer: '' });
+    reset({ project_name: '', client_name: '', site_location: '', company: 'UNIT_A', project_type: '', start_date: '', expected_completion_date: '', project_value: '', project_manager: user?.name || '', site_engineer: '' });
     setOpen(true);
   };
 
@@ -68,7 +68,7 @@ export default function ProjectsPage() {
   const columnDefs = [
     { field: 'project_name', headerName: 'Project Name', minWidth: 180 },
     { field: 'client_name', headerName: 'Client', minWidth: 160 },
-    { field: 'company', headerName: 'Company', minWidth: 180, valueFormatter: (p) => p.value === 'VMG_BARAMATI' ? 'VMG Baramati' : 'VMG Sugar LLP' },
+    { field: 'company', headerName: 'Company', minWidth: 180, valueFormatter: (p) => p.value === 'UNIT_A' ? 'Unit A' : 'Unit B' },
     { field: 'project_value', headerName: 'Value', type: 'numericColumn', minWidth: 120, valueFormatter: (p) => `₹ ${Number(p.value).toLocaleString('en-IN')}` },
     { field: 'project_manager', headerName: 'Manager', minWidth: 150 },
     {

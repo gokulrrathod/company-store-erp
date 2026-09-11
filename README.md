@@ -1,9 +1,9 @@
-# Store POC — VMG Industries
+# Store POC
 
 Design POC for the Store department: inventory, stock in/out, material requests, and low-stock alerts.
 
 ## Stack
-- **Frontend**: React + MUI (Vite) — navy/orange VMG-inspired theme
+- **Frontend**: React + MUI (Vite) — navy/orange themed
 - **Backend**: Node.js + Express
 - **Database**: PostgreSQL (managed via pgAdmin)
 

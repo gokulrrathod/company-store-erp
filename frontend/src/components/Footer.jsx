@@ -13,7 +13,7 @@ export default function Footer() {
       }}
     >
       <Typography variant="caption">
-        © {new Date().getFullYear()} VMG Industries — Store Department
+        © {new Date().getFullYear()} Store Department
       </Typography>
     </Box>
   );

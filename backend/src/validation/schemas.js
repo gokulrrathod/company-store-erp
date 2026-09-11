@@ -395,7 +395,7 @@ export const projectSchema = z.object({
   project_name: requiredString('Project name', 200),
   client_name: requiredString('Client name', 200),
   site_location: optionalString(300),
-  company: z.enum(['VMG_BARAMATI', 'VMG_SUGAR_LLP'], { errorMap: () => ({ message: 'Select a company' }) }),
+  company: z.enum(['UNIT_A', 'UNIT_B'], { errorMap: () => ({ message: 'Select a company' }) }),
   project_type: optionalString(100),
   start_date: optionalString(20),
   expected_completion_date: optionalString(20),

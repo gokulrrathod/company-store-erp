@@ -1,4 +1,4 @@
-# VMG Store ERP — Mobile Companion
+# Store ERP — Mobile Companion
 
 A React Native (Expo) companion app to the Store POC web app, talking to the
 same live backend (`https://backend-production-6f2b.up.railway.app`). No

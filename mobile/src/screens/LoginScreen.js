@@ -30,9 +30,9 @@ export default function LoginScreen() {
       <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 28 }}>
         <View style={{ alignItems: 'center', marginBottom: 32 }}>
           <View style={{ width: 56, height: 56, borderRadius: 16, backgroundColor: '#4F46E5', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
-            <Text style={{ color: '#fff', fontSize: 24, fontWeight: '700' }}>V</Text>
+            <Text style={{ color: '#fff', fontSize: 24, fontWeight: '700' }}>S</Text>
           </View>
-          <Text variant="titleLarge" style={{ fontWeight: '700' }}>VMG Industries</Text>
+          <Text variant="titleLarge" style={{ fontWeight: '700' }}>Store Management</Text>
           <Text variant="bodySmall" style={{ color: '#64748B' }}>Store ERP — Mobile</Text>
         </View>
 

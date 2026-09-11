@@ -561,7 +561,7 @@ CREATE INDEX IF NOT EXISTS idx_manpower_allocations_labour ON manpower_allocatio
 -- =====================================================================
 -- PROJECT / CIVIL (merged module, per Recommended Decision #1)
 -- Source: Requirements-ProjectCivil.md / 2 Civil Work SOP + 8 Project Department SOP
--- Company field separates VMG Baramati vs VMG Sugar LLP reporting without separate modules.
+-- Company field separates reporting for multiple business units without separate modules.
 -- =====================================================================
 
 CREATE TABLE IF NOT EXISTS projects (
@@ -569,7 +569,7 @@ CREATE TABLE IF NOT EXISTS projects (
     project_name VARCHAR(200) NOT NULL,
     client_name VARCHAR(200) NOT NULL,
     site_location VARCHAR(300),
-    company VARCHAR(50) NOT NULL DEFAULT 'VMG_BARAMATI' CHECK (company IN ('VMG_BARAMATI', 'VMG_SUGAR_LLP')),
+    company VARCHAR(50) NOT NULL DEFAULT 'UNIT_A' CHECK (company IN ('UNIT_A', 'UNIT_B')),
     project_type VARCHAR(100),
     start_date DATE,
     expected_completion_date DATE,

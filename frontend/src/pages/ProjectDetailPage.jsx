@@ -264,7 +264,7 @@ export default function ProjectDetailPage() {
         <Chip size="small" label={project.status} color={statusColor[project.status]} />
       </Stack>
       <Typography variant="body2" color="text.secondary" sx={{ ml: 5 }}>
-        Client: {project.client_name} · {project.company === 'VMG_BARAMATI' ? 'VMG Baramati' : 'VMG Sugar LLP'} · PM: {project.project_manager}
+        Client: {project.client_name} · {project.company === 'UNIT_A' ? 'Unit A' : 'Unit B'} · PM: {project.project_manager}
       </Typography>
 
       {actionError && <Alert severity="error" sx={{ mt: 2 }}>{actionError}</Alert>}

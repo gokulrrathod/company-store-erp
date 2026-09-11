@@ -31,7 +31,7 @@ async function login(page, email) {
   await page.getByLabel('Password').fill(PASSWORD);
   await page.waitForTimeout(CLICK_PAUSE);
   await page.getByRole('button', { name: 'Sign In' }).click();
-  await expect(page.getByRole('banner').getByText('VMG Industries')).toBeVisible();
+  await expect(page.getByRole('banner').getByText('Store Management')).toBeVisible();
   await page.waitForTimeout(PAUSE);
 }
 

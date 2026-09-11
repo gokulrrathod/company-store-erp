@@ -50,7 +50,7 @@ export default function LoginPage() {
           >
             <Inventory2Icon />
           </Box>
-          <Typography variant="h6" fontWeight={700}>Store Dept — VMG Industries</Typography>
+          <Typography variant="h6" fontWeight={700}>Store Management</Typography>
         </Stack>
         <form onSubmit={handleSubmit(onSubmit)}>
           <Stack spacing={2}>

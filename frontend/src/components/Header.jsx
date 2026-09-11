@@ -82,7 +82,7 @@ export default function Header() {
         </Box>
         <Box>
           <Typography variant="subtitle1" fontWeight={700} lineHeight={1.2}>
-            VMG Industries
+            Store Management
           </Typography>
           <Typography variant="caption" color="text.secondary">
             ERP Demo
