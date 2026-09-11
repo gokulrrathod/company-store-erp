@@ -8,6 +8,7 @@ const rawPool = new pg.Pool({
   database: process.env.PGDATABASE,
   user: process.env.PGUSER,
   password: process.env.PGPASSWORD,
+  max: Number(process.env.PGPOOL_MAX) || 20,
 });
 
 // pg emits 'error' on idle clients (e.g. dropped connections); Node treats an
