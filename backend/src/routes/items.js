@@ -10,6 +10,17 @@ import { addBatch } from '../services/stock.js';
 const router = Router();
 router.use(requireAuth);
 
+async function nextItemCode(client) {
+  const year = new Date().getFullYear();
+  const prefix = `ITM-${year}-`;
+  const { rows } = await client.query(
+    `SELECT code FROM items WHERE code LIKE $1 ORDER BY id DESC LIMIT 1`,
+    [`${prefix}%`]
+  );
+  const lastSeq = rows.length ? Number(rows[0].code.split('-').pop()) : 0;
+  return `${prefix}${String(lastSeq + 1).padStart(4, '0')}`;
+}
+
 const SELECT_ITEM_FIELDS = `
   i.*,
   c.name AS category_name,
@@ -58,12 +69,13 @@ router.get('/:id', asyncHandler(async (req, res) => {
 
 router.post('/', requireRole(ROLES.STORE_MANAGER, ROLES.STORE_EXECUTIVE, ROLES.ADMIN), validate(itemCreateSchema), asyncHandler(async (req, res, next) => {
   const {
-    code, name, category_id, unit, quantity, reorder_level,
+    name, category_id, unit, quantity, reorder_level,
     minimum_stock, maximum_stock, warehouse, rack_number, bin_number, storage_location, unit_rate,
   } = req.body;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    const code = await nextItemCode(client);
     const { rows } = await client.query(
       `INSERT INTO items (code, name, category_id, unit, quantity, reorder_level,
          minimum_stock, maximum_stock, warehouse, rack_number, bin_number, storage_location, unit_rate)
@@ -89,25 +101,22 @@ router.post('/', requireRole(ROLES.STORE_MANAGER, ROLES.STORE_EXECUTIVE, ROLES.A
 
 router.put('/:id', requireRole(ROLES.STORE_MANAGER, ROLES.STORE_EXECUTIVE, ROLES.ADMIN), validate(itemUpdateSchema), asyncHandler(async (req, res, next) => {
   const {
-    code, name, category_id, unit, reorder_level,
+    name, category_id, unit, reorder_level,
     minimum_stock, maximum_stock, warehouse, rack_number, bin_number, storage_location, unit_rate,
   } = req.body;
   try {
     const { rows } = await pool.query(
-      `UPDATE items SET code = $1, name = $2, category_id = $3, unit = $4, reorder_level = $5,
-         minimum_stock = $6, maximum_stock = $7, warehouse = $8, rack_number = $9,
-         bin_number = $10, storage_location = $11, unit_rate = $12
-       WHERE id = $13 RETURNING *`,
-      [code, name, category_id ?? null, unit, reorder_level ?? 0,
+      `UPDATE items SET name = $1, category_id = $2, unit = $3, reorder_level = $4,
+         minimum_stock = $5, maximum_stock = $6, warehouse = $7, rack_number = $8,
+         bin_number = $9, storage_location = $10, unit_rate = $11
+       WHERE id = $12 RETURNING *`,
+      [name, category_id ?? null, unit, reorder_level ?? 0,
         minimum_stock ?? 0, maximum_stock ?? null, warehouse ?? null, rack_number ?? null, bin_number ?? null, storage_location ?? null, unit_rate ?? 0,
         req.params.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Item not found' });
     res.json(rows[0]);
   } catch (err) {
-    if (err.code === '23505') {
-      return res.status(400).json({ error: 'Item code already exists', fieldErrors: { code: 'This code is already in use' } });
-    }
     next(err);
   }
 }));

@@ -12,7 +12,7 @@ export const loginSchema = z.object({
 });
 
 export const itemSchema = z.object({
-  code: requiredString('Code', 50),
+  code: optionalString(50),
   name: requiredString('Name', 200),
   category_id: z.union([z.string(), z.number()]).optional().nullable(),
   unit: requiredString('Unit', 20),
