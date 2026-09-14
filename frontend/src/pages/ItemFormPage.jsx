@@ -73,7 +73,11 @@ export default function ItemFormPage() {
     >
       <Grid container spacing={2.5}>
         <Grid item xs={12} sm={6}>
-          <RHFTextField name="code" control={control} label="Material Code" required />
+          <RHFTextField
+            name="code" control={control} label="Material Code" disabled
+            placeholder={isEdit ? undefined : 'Auto-generated on save'}
+            helperText={isEdit ? undefined : 'Assigned automatically when you create this item'}
+          />
         </Grid>
         <Grid item xs={12} sm={6}>
           <RHFTextField name="name" control={control} label="Material Name" required />
